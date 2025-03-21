@@ -1,57 +1,78 @@
-// pages/api/login.ts
-import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from "@/database/db"
-import jwt from 'jsonwebtoken';
-import { Client, Staff } from "@/src/types"
 import { NextResponse } from 'next/server';
+import { query } from '@/database/db';
+import jwt from 'jsonwebtoken';
+import { Client, Staff, Owner } from '@/src/types';
 
 const JWT_SECRET = '123';
 
-export async function POST(req: Request, res: NextResponse) {
-
+export async function POST(req: Request) {
     const { email, password } = await req.json();
 
     if (!email || !password) {
-        return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+        return NextResponse.json(
+            { message: 'Missing required fields' },
+            { status: 400 }
+        );
     }
 
     try {
-        const clients = await query(
+        // Check the client table
+        const [client] = await query(
             'SELECT * FROM client WHERE email = ?',
             [email]
         ) as Client[];
 
-        let user: Client | Staff | null = null;
+        let user: Client | Staff | Owner | null = client;
 
-        if (Array.isArray(clients) && clients.length > 0) {
-            user = clients[0];
-        } else {
-            const staff = await query(
+        if (!user) {
+            // Check the staff table
+            const [staff] = await query(
                 'SELECT * FROM staff WHERE email = ?',
                 [email]
-            )as Staff[];
+            ) as Staff[];
 
-            if (Array.isArray(staff) && staff.length > 0) {
-                user = staff[0];
+            user = staff;
+
+            if (!user) {
+                // Check the owner table
+                const [owner] = await query(
+                    'SELECT * FROM owners WHERE email = ?',
+                    [email]
+                ) as Owner[];
+
+                user = owner;
             }
         }
 
+        // If no user was found in any table
         if (!user) {
-            return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
+            return NextResponse.json(
+                { message: 'Invalid credentials' },
+                { status: 401 }
+            );
         }
 
-        const isValidPassword = password ===  user.password;
+        const isValidPassword = password === user.password;
 
         if (!isValidPassword) {
-            return NextResponse.json({ message: "Invalid credentials" }, { status: 401 });
+            return NextResponse.json(
+                { message: 'Invalid credentials' },
+                { status: 401 }
+            );
         }
 
         const token = jwt.sign(
-            { id: user.id  , role: user.role }, 
-            JWT_SECRET
+            { id: user.id, role: user.role, branch_id: user.branch_id },
+            JWT_SECRET,
+            { expiresIn: '1h' }
         );
-        return NextResponse.json({ token : token }, { status: 200 });
+
+        return NextResponse.json({ token });
     } catch (error) {
-        return NextResponse.json({ message: "Internal server error" }, { status: 500 });
+        console.error('Error in login API:', error);
+        return NextResponse.json(
+            { message: 'Internal server error' },
+            { status: 500 }
+        );
     }
 }

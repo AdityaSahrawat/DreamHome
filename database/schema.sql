@@ -2,14 +2,12 @@
 
 USE dreamhome;
 
--- Users table (Generic for all users)
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     role ENUM('client', 'manager', 'supervisor', 'assistant') NOT NULL
 );
 
--- Branch table
 CREATE TABLE branch (
     branch_id INT AUTO_INCREMENT PRIMARY KEY,
     branch_name VARCHAR(255) NOT NULL,
@@ -17,7 +15,6 @@ CREATE TABLE branch (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Clients table (Specific user type)
 CREATE TABLE client (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -29,7 +26,6 @@ CREATE TABLE client (
     FOREIGN KEY (branch_id) REFERENCES branch(branch_id) ON DELETE CASCADE
 );
 
--- Properties table
 CREATE TABLE properties (
     id INT AUTO_INCREMENT PRIMARY KEY,
     owner_id INT NOT NULL,
@@ -41,19 +37,18 @@ CREATE TABLE properties (
     FOREIGN KEY (owner_id) REFERENCES client(id) ON DELETE CASCADE
 );
 
--- Staff applications table (Pending applications)
-CREATE TABLE StaffApplications (
+CREATE TABLE staffApplications (
     application_id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     role ENUM('manager', 'supervisor', 'assistant') NOT NULL,
     branch_id INT,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     temp_password VARCHAR(255), 
+    name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (branch_id) REFERENCES branch(branch_id) ON DELETE CASCADE
 );
 
--- Staff table (Approved staff members)
 CREATE TABLE Staff (
     id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -64,12 +59,25 @@ CREATE TABLE Staff (
     FOREIGN KEY (branch_id) REFERENCES branch(branch_id) ON DELETE CASCADE
 );
 
--- Notifications table (For clients & staff)
 CREATE TABLE notifications (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL, -- ID of the client or staff member
-    user_type ENUM('client', 'manager', 'supervisor', 'assistant') NOT NULL, -- Type of user
-    message TEXT NOT NULL, -- Notification message
+    user_id INT NOT NULL,
+    role ENUM('client', 'manager', 'supervisor', 'assistant') NOT NULL,
+    branch_id INT NOT NULL,
+    message TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_read TINYINT(1) DEFAULT 0 -- Boolean field for read/unread status
+    is_read TINYINT(1) DEFAULT 0,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (branch_id) REFERENCES branch(branch_id) ON DELETE CASCADE
 );
+
+CREATE TABLE owners (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('owner') DEFAULT 'owner',
+    branch_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (branch_id) REFERENCES branch(branch_id) ON DELETE CASCADE
+)
