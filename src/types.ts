@@ -38,3 +38,15 @@ export interface StaffApplication {
     branch_id: number;
     created_at: Date;
 }
+
+export interface Property{
+    id : number;
+    client_id : number;
+    title : string;
+    description : string;
+    price : number;
+    location : string;
+    status : 'pending' | 'approved' | 'rejected';
+    branch_id : number,
+    created_at : Date
+}

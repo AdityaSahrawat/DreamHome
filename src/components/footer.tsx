@@ -1,5 +1,5 @@
 import { Mail, MapPin, Phone } from "lucide-react";
-import { Separator } from "./ui/seperator";
+import { Separator } from "./ui/seperator"
 
 const Footer = () => {
   return (
