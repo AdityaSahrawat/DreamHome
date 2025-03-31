@@ -6,7 +6,7 @@ import { NextResponse } from 'next/server';
 export async function POST(req: Request, res: NextApiResponse) {
     const { name, email, password, role, branch_id } = await req.json();
 
-    if (!name || !email || !password || !role) {
+    if (!name || !email || !password || !role || !branch_id) {
         return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
     }
 

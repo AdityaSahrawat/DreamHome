@@ -7,6 +7,7 @@ const JWT_SECRET = '123';
 
 export async function POST(req: Request) {
     const { email, password } = await req.json();
+    console.log("req in login" , email , password)
 
     if (!email || !password) {
         return NextResponse.json(
@@ -64,7 +65,6 @@ export async function POST(req: Request) {
         const token = jwt.sign(
             { id: user.id, role: user.role, branch_id: user.branch_id },
             JWT_SECRET,
-            { expiresIn: '1h' }
         );
 
         return NextResponse.json({ token });

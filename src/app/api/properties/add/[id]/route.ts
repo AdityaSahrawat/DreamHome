@@ -3,7 +3,7 @@ import { query } from '@/database/db';
 import { authenticateToken } from '@/src/middleware';
 import { Property } from '@/src/types';
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
     try {
 
         const authResult = await authenticateToken(req);
@@ -11,6 +11,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         if (authResult instanceof NextResponse) {
             return authResult;
         }
+        const applicationId = await params.id;
 
         const { role, branch_id } = authResult;
 
@@ -21,7 +22,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             );
         }
 
-        const { status, assistant_id } = await req.json();
+        const { status, assistantId } = await req.json();
+        console.log("body : " , status , assistantId)
+        console.log("id : " , applicationId)
 
         if (!status || !['approved', 'rejected'].includes(status)) {
             return NextResponse.json(
@@ -29,16 +32,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
                 { status: 400 }
             );
         }
-
-        if (status === 'approved' && !assistant_id) {
+        console.log("2")
+        if (status === 'approved' && !assistantId) {
             return NextResponse.json(
                 { message: 'Assistant ID is required for approval' },
                 { status: 400 }
             );
         }
 
-        const applicationId = await params.id;
-
+        
+        console.log("3")
         const applications = await query(
             'SELECT * FROM properties WHERE id = ? AND branch_id = ?',
             [applicationId, branch_id]
@@ -51,18 +54,27 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
             );
         }
 
-        await query(
-            'UPDATE properties SET status = ? WHERE id = ?',
-            [status, applicationId]
-        );
+        // await query(
+        //     'UPDATE properties SET status = ? WHERE id = ?',
+        //     [status, applicationId]
+        // );
 
-        // if (status === 'approved') {
-        //     await query(
-        //         'INSERT INTO properties (owner_id, title, description, price, location, assistant_id) VALUES (?, ?, ?, ?, ?, ?)',
-        //         [application.client_id, application.title, application.description, application.price, application.location, assistant_id]
-        //     );
-        // }
-
+        if (status === 'approved') {
+            await query(
+                'UPDATE properties SET status = ? , agent_id = ? WHERE id = ?' ,
+                [status, assistantId , applicationId]
+            )
+        }else if (status === "rejected"){
+            await query(
+                'UPDATE properties SET status = ? WHERE id = ?' ,
+                [status , applicationId]
+            )
+        }else {
+            return NextResponse.json(
+                {message : 'Wrong status type given '},
+                {status : 420}
+            )
+        }
         return NextResponse.json(
             { message: `Property application ${status} successfully` },
             { status: 200 }

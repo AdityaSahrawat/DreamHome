@@ -1,20 +1,24 @@
 "use client"
 
+import axios from 'axios';
 // pages/login.tsx
 import Head from 'next/head';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [userType, setUserType] = useState('client');
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log('Login attempt:', { email, password, userType });
-    // In a real app, you would call an API endpoint
+    const response = await axios.post("/api/auth/login" , {email , password});
+    const token = response.data.token 
+    window.localStorage.setItem("token" , token)
+    router.push("/")
   };
 
   return (

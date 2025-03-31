@@ -5,10 +5,9 @@ import { StaffApplication } from '@/src/types';
 
 
 // PUT /api/applications/[applicationId] - Accept or reject an application
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
     try {
         // Authenticate the user
-        console.log("")
         const authResult = await authenticateToken(request);
 
 
@@ -29,7 +28,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         }
 
 
-        const applicationId = params.id;
+        const applicationId = await params.id;
 
         console.log("applicationId : " , applicationId)
         const applications = await query(

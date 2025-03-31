@@ -1,31 +1,42 @@
- import { NextRequest , NextResponse } from "next/server";
-import { query } from "@/database/db";
-import { authenticateToken } from "@/src/middleware";
-import { Property } from "@/src/types";
+import { NextRequest, NextResponse } from 'next/server';
+import { query } from '@/database/db';
+import { authenticateToken } from '@/src/middleware';
 
+export async function GET(request: NextRequest) {
+  try {
+    const authResult = await authenticateToken(request);
+    if (authResult instanceof NextResponse) return authResult;
 
-export async function GET(req : NextRequest){
+    const properties = await query('SELECT * FROM properties WHERE status = "approved" ORDER BY created_at DESC') as any[]
+    
+    const photos = await query('SELECT property_id, photo_url FROM property_photos') as any[]
+    
+    const photosByProperty: Record<string, string[]> = {};
+    photos.forEach((photo: any) => {
+      if (!photosByProperty[photo.property_id]) {
+        photosByProperty[photo.property_id] = [];
+      }
+      photosByProperty[photo.property_id].push(photo.photo_url);
+    });
 
-    try{
-        const authResult = authenticateToken(req);
+    const propertiesWithPhotos = properties.map((property: any) => ({
+      ...property,
+      photos: photosByProperty[property.id] || []
+    }));
 
-        if(authResult instanceof NextResponse){
-            return authResult;
-        }
-
-        const properties = await query(
-            'SELECT * FROM properties'
-        ) as Property[]
-
-        return NextResponse.json(
-            {AllProperties : properties},
-            {status : 200}
-        )
-
-    }catch(e){
-        return NextResponse.json(
-            {message : "Internal server Error"},
-            {status : 500}
-        )
-    }
+    return NextResponse.json(
+      { 
+        properties: propertiesWithPhotos 
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error in GET /api/properties:', error);
+    return NextResponse.json(
+      { 
+        message: error instanceof Error ? error.message : 'Internal server error' 
+      },
+      { status: 500 }
+    );
+  }
 }

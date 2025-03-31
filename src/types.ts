@@ -1,4 +1,11 @@
 // types.ts
+
+export interface User {
+    id : number, 
+    email : string,
+    role :  'client' | 'owner' |'manager' |'assistant'| 'supervisor'
+}
+
 export interface Client {
     id: number;
     name: string;
@@ -39,14 +46,28 @@ export interface StaffApplication {
     created_at: Date;
 }
 
-export interface Property{
-    id : number;
-    client_id : number;
-    title : string;
-    description : string;
-    price : number;
-    location : string;
-    status : 'pending' | 'approved' | 'rejected';
-    branch_id : number,
-    created_at : Date
+export interface Property {
+    id: number;
+    title: string;
+    agent_id : number,
+    description: string;
+    address: string;
+    city : string,
+    price: number;
+    bedrooms: number;
+    bathrooms: number;
+    sqft: number;
+    type: string;
+    status: 'pending' | 'approved' | 'rejected' | 'sold' | 'rented' ;
+    latitude : number,
+    longitude : number,
+    year_built : number,
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Property_image {
+    id : number,
+    photo_url : string,
+    property_id : number
 }

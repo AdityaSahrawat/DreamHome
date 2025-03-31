@@ -26,17 +26,6 @@ CREATE TABLE client (
     FOREIGN KEY (branch_id) REFERENCES branch(branch_id) ON DELETE CASCADE
 );
 
-CREATE TABLE properties (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    owner_id INT NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    price DECIMAL(10,2) NOT NULL,
-    location VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (owner_id) REFERENCES client(id) ON DELETE CASCADE
-);
-
 CREATE TABLE staffApplications (
     application_id INT AUTO_INCREMENT PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -81,3 +70,32 @@ CREATE TABLE owners (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (branch_id) REFERENCES branch(branch_id) ON DELETE CASCADE
 )
+
+CREATE TABLE properties (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  agent_id INT,
+  branch_id INT,
+  description TEXT,
+  price DECIMAL(15,2) NOT NULL,
+  address VARCHAR(255) NOT NULL,
+  city VARCHAR(100) NOT NULL,
+  latitude DECIMAL(10,8),
+  longitude DECIMAL(11,8),
+  bedrooms INTEGER NOT NULL,
+  bathrooms NUMERIC(4,1) NOT NULL,
+  sqft DECIMAL(10,2) NOT NULL,
+  year_built INTEGER,
+  status ENUM('pending', 'approved', 'rejected', 'sold', 'rented') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (agent_id) REFERENCES Staff(id) ON DELETE CASCADE,
+  FOREIGN KEY (branch_id) REFERENCES branch(branch_id) ON DELETE CASCADE
+);
+
+CREATE TABLE property_photos (
+  id SERIAL PRIMARY KEY,
+  property_id INT NOT NULL,  
+  photo_url VARCHAR(255),
+  FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
+);
