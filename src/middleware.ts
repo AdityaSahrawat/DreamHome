@@ -48,7 +48,7 @@ export function authorizeRole(roles: string[]) {
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   
-  const publicRoutes = ["/api/auth/register", "/api/auth/login"];
+  const publicRoutes = ["/api/auth/register", "/api/auth/login" , "/api/branch"];
   if (publicRoutes.includes(pathname)) {
     return NextResponse.next();
   }

@@ -2,21 +2,21 @@
 
 import Head from 'next/head';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-// Branch data - you could also fetch this from an API
-const BRANCHES = [
-  { id: 1, name: 'Hisar' },
-  { id: 2, name: 'Delhi' },
-  { id: 3, name: 'Mumbai' },
-  // Add more branches as needed
-];
+// Define the Branch interface
+interface Branch {
+  branch_id: number;
+  branch_name: string;
+  location: string;
+}
 
 // Role options for staff
 const STAFF_ROLES = [
   { value: 'manager', label: 'Manager' },
   { value: 'assistant', label: 'Assistant' },
+  { value: 'supervisor', label: 'Supervisor' },
   // Add more roles if needed
 ];
 
@@ -30,7 +30,30 @@ export default function Register() {
   const [branchId, setBranchId] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    // Fetch branches from API
+    const fetchBranches = async () => {
+      try {
+        const response = await fetch('/api/branch');
+        if (!response.ok) {
+          throw new Error('Failed to fetch branches');
+        }
+        const data = await response.json();
+        setBranches(data.result || []);
+      } catch (err) {
+        console.error('Error fetching branches:', err);
+        setError('Failed to load branches. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBranches();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,15 +86,13 @@ export default function Register() {
         throw new Error(data.message || 'Registration failed');
       }
 
-      setSuccess(data.message || 
-        (userType === 'client' 
-          ? 'Registration successful!' 
-          : 'Staff application submitted successfully! Waiting for approval.')
-      );
+      setSuccess(data.message);
       
-      setTimeout(() => {
-        router.push(userType === 'client' ? '/' : '/login');
-      }, 2000);
+      if (userType === 'client') {
+        setTimeout(() => {
+          router.push('/login');
+        }, 2000);
+      }
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
     }
@@ -200,15 +221,17 @@ export default function Register() {
                   value={branchId}
                   onChange={(e) => setBranchId(e.target.value)}
                   required
+                  disabled={loading}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
                   <option value="">Select a branch</option>
-                  {BRANCHES.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name}
+                  {branches.map((branch) => (
+                    <option key={branch.branch_id} value={branch.branch_id}>
+                      {branch.branch_name} ({branch.location})
                     </option>
                   ))}
                 </select>
+                {loading && <p className="text-xs text-gray-500 mt-1">Loading branches...</p>}
               </div>
             </div>
 
@@ -267,6 +290,7 @@ export default function Register() {
               <button
                 type="submit"
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={loading}
               >
                 {userType === 'client' ? 'Create Account' : 'Submit Application'}
               </button>
