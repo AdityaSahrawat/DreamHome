@@ -71,3 +71,62 @@ export interface Property_image {
     photo_url : string,
     property_id : number
 }
+
+export interface ViewRequest {
+    id : number;
+    client_id: number;
+    property_id: number;
+    assistant_id: number | null;
+    status: 'pending' | 'approved' | 'rejected';
+    scheduled_time: string;
+    message: string;
+}
+
+export interface Lease_draft {
+    id : number,
+    property_id : number, 
+    client_id : number,
+    current_terms?: LeaseTerms;
+    status : 'draft' | 'client_review' | 'manager_review' | 'manager_review' | 'approved' | 'signed';
+    version : number
+}
+
+export interface negotiations {
+    id: number;
+    draft_id: number;
+    proposed_terms: JSON; 
+    status: 'pending' | 'accepted' | 'rejected' | 'countered';
+    message : string
+    created_at: Date;
+    client_id: number;
+    responded_at?: Date;
+    staff_response?: JSON; 
+    response_message?: string;
+    staff_id?: number; 
+    previous_negotiation_id?: number;
+}
+
+export interface Leases {
+    id : number,
+    draft_id : number;
+    final_terms : JSON,
+    signed_by_client : boolean;
+    signed_by_agent : boolean;
+    active_from : Date
+}
+
+export interface LeaseTerms {
+    financial: {
+      rent: number;
+      deposit: number;
+      payment_due_day: number;
+    };
+    dates: {
+      start: string;
+      end: string;
+    };
+    utilities: {
+      included: string[];
+      not_included: string[];
+    };
+  }

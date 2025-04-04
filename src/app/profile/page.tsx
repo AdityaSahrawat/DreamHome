@@ -4,9 +4,9 @@
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Card } from "@/src/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
-import { UserCircle, HomeIcon, FileText } from "lucide-react";
+import { UserCircle, HomeIcon, FileText, PlusIcon } from "lucide-react";
 import Navbar from "@/src/components/navbar";
 import { useToast } from "@/src/components/hook/use-toast";
 import UserInfoCard from "./userInfo";
@@ -15,6 +15,8 @@ import PropertiesCard from "./propertiesCard";
 import ManagerTabs from "./managerTab";
 import ConfirmationDialog from "./confirmationDialog";
 import { Loader2 } from "lucide-react";
+import LeaseDraftsCard from './leaseDraftCard';
+import CreateLeaseDialog from './createLeaseDialog';
 
 type User = {
   id: string;
@@ -32,13 +34,40 @@ type ProfileData = {
   staffApplications?: any[];
   pendingProperties?: any[];
   assistants?: any[];
+  leaseRequests?: any[];
+  viewRequests?: any[];
+  leaseDrafts? : any[]
 };
+
+interface Lease {
+  id: number;
+  propertyId: number;
+  propertyTitle: string;
+  propertyAddress: string;
+  signedByClient: boolean;
+  signedByAgent: boolean;
+  activeFrom: Date;
+  clientName?: string;
+  clientEmail?: string;
+}
+
+interface LeaseDraft {
+  id: number;
+  propertyId: number;
+  propertyTitle: string;
+  propertyAddress: string;
+  status: 'draft' | 'client_review' | 'manager_review' | 'approved' | 'signed';
+  version: number;
+  clientName?: string;
+  clientEmail?: string;
+}
 
 const DashboardPage = () => {
   const router = useRouter();
   const { toast } = useToast();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [createLeaseDialogOpen, setCreateLeaseDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationDialog, setConfirmationDialog] = useState({
     open: false,
@@ -47,6 +76,7 @@ const DashboardPage = () => {
     assistantId: "",
     title: "",
   });
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const handlePropertyStatus = async (propertyId: string, status: 'approved'|'rejected', assistantId?: string) => {
     console.log(propertyId , assistantId , status)
@@ -138,6 +168,81 @@ const DashboardPage = () => {
     }
   };
 
+  const handleScheduleStatusChange = async (requestId: string, status: 'approved'|'rejected') => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    console.log(requestId)
+    try {
+      await axios.put('/api/leases/schedule', {
+        requestId ,
+        status
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+  
+      fetchProfileData();
+      
+      toast({
+        title: `Viewing Request ${status === 'approved' ? 'Approved' : 'Rejected'}`,
+        description: `The viewing request has been ${status === 'approved' ? 'approved' : 'rejected'}.`,
+        variant: status === 'approved' ? "default" : "destructive"
+      });
+    } catch (error) {
+      console.error('Error updating viewing request:', error);
+      toast({
+        title: "Action Failed",
+        description: "There was a problem updating the viewing request.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleStaffApplicationStatusChange = async (applicationId: string, status: 'approved'|'rejected') => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+  
+    try {
+      await axios.post(`/api/auth/register/staff/${applicationId}`, {
+        status
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+  
+      fetchProfileData();
+      
+      toast({
+        title: `Application ${status === 'approved' ? 'Approved' : 'Rejected'}`,
+        description: `The staff application has been ${status === 'approved' ? 'approved and the account created' : 'rejected'}.`,
+        variant: status === 'approved' ? "default" : "destructive"
+      });
+    } catch (error) {
+      console.error('Error updating staff application:', error);
+      toast({
+        title: "Action Failed",
+        description: "There was a problem updating the staff application.",
+        variant: "destructive"
+      });
+    }
+  };
+  useEffect(() => {
+    fetchProfileData();
+  }, [router, refreshKey]);
+  
+  // Add this function
+  const handleRefresh = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   useEffect(() => {
     fetchProfileData();
   }, [router]);
@@ -182,9 +287,12 @@ const DashboardPage = () => {
         <UserInfoCard user={profileData.user} />
 
         {/* Client-specific content */}
-        {profileData.user.role === 'client' && profileData.leases && (
-          <LeasesCard leases={profileData.leases} />
-        )}
+        {profileData.user.role === 'client'  && (
+        <>
+          {profileData.leases && <LeasesCard leases={profileData.leases} />}
+          {profileData.leaseDrafts && <LeaseDraftsCard drafts={profileData.leaseDrafts} />}
+        </>
+      )}
 
         {/* Staff/Owner-specific content */}
         {['manager', 'supervisor', 'assistant', 'owner'].includes(profileData.user.role) && profileData.properties && (
@@ -200,8 +308,41 @@ const DashboardPage = () => {
             pendingProperties={profileData.pendingProperties || []}
             staffApplications={profileData.staffApplications || []}
             assistants={profileData.assistants || []}
+            viewRequests={profileData.viewRequests || []}
             onStatusChange={handlePropertyStatus}
+            onScheduleStatusChange={handleScheduleStatusChange}
+            onStaffApplicationStatusChange={handleStaffApplicationStatusChange}
           />
+)}
+
+        {profileData.user.role === "assistant" && (
+          <>
+          
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold flex items-center justify-between">
+                  <span>Lease Management</span>
+                  <Button onClick={() => setCreateLeaseDialogOpen(true)}>
+                    <PlusIcon className="h-4 w-4 mr-2" />
+                    Create New Lease
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+            </Card>
+
+
+            <LeaseDraftsCard 
+            //@ts-ignore
+              drafts={profileData.leaseDrafts} 
+              isStaff={['assistant'].includes(profileData.user.role)}
+              onUpdate={handleRefresh}
+            />
+
+          </>
+
+          
+          
+          
         )}
 
         <ConfirmationDialog 

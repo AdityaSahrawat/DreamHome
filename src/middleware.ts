@@ -59,11 +59,11 @@ export async function middleware(req: NextRequest) {
   }
 
   const roleBasedRoutes: { [key: string]: string[] } = {
-    "/api/notification": ["client", "manager", "owner"],
+    "/api/notification": ["client", "manager", "owner" ,"assistant"],
     "/api/client": ["client"],
     // "/api/properties/all": ["client", "manager"],
-    "/api/properties": ["client", "manager"],
-    "/api/profile": ["client", "manager"],
+    "/api/properties": ["client", "manager" ,"assistant"],
+    "/api/profile": ["client", "manager" , "assistant"],
   };
 
   for (const route in roleBasedRoutes) {

@@ -1,13 +1,13 @@
-// api : api/notification/[id]
-
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/database/db';
 import { authenticateToken } from '@/src/middleware';
 import { StaffApplication } from '@/src/types';
 
 
+// PUT /api/applications/[applicationId] - Accept or reject an application
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
     try {
+        // Authenticate the user
         const authResult = await authenticateToken(request);
 
 

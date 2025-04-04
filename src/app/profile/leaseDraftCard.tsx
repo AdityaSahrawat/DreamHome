@@ -1,34 +1,23 @@
 import { Card, CardHeader, CardContent, CardTitle } from "@/src/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
 import { Badge } from "@/src/components/ui/badge";
-import { FileText, Edit, MessageSquare, Check, X, History } from "lucide-react";
+import { FileText, MessageSquare, Check, X } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
-import Link from "next/link";
-import NegotiationDialog from "./negotiationDialog";
 import { useState } from "react";
+import NegotiationDialog from "./negotiationDialog";
+import LeaseDetailsDialog from "./leaseDetatils";
 import { LeaseDraft } from "./interface";
-import NegotiationHistoryDialog from "./negotiationHistory";
-import { useToast } from "@/src/components/hook/use-toast";
-import { Loader2 } from "lucide-react";
 
 interface LeaseDraftCardProps {
   drafts: LeaseDraft[];
   isStaff?: boolean;
   onUpdate?: () => void;
-  userRole: 'client' | 'assistant' | 'manager' | 'supervisor' | 'owner';
 }
 
-export default function LeaseDraftsCard({ 
-  drafts, 
-  isStaff = false, 
-  onUpdate,
-  userRole 
-}: LeaseDraftCardProps) {
-  const { toast } = useToast();
+export default function LeaseDraftsCard({ drafts, isStaff = false, onUpdate }: LeaseDraftCardProps) {
   const [negotiationDialogOpen, setNegotiationDialogOpen] = useState(false);
-  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedDraft, setSelectedDraft] = useState<LeaseDraft | null>(null);
-  const [loadingAction, setLoadingAction] = useState<number | null>(null);
 
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
@@ -41,48 +30,14 @@ export default function LeaseDraftsCard({
     }
   };
 
-  const handleNegotiate = (draft: LeaseDraft) => {
+  const handleViewClick = (draft: LeaseDraft) => {
+    setSelectedDraft(draft);
+    setDetailsDialogOpen(true);
+  };
+
+  const handleNegotiateClick = (draft: LeaseDraft) => {
     setSelectedDraft(draft);
     setNegotiationDialogOpen(true);
-  };
-
-  const handleViewHistory = (draft: LeaseDraft) => {
-    setSelectedDraft(draft);
-    setHistoryDialogOpen(true);
-  };
-
-  const handleStatusUpdate = async (draftId: number, action: 'approve' | 'reject') => {
-    setLoadingAction(draftId);
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No authentication token found');
-
-      const response = await fetch(`/api/lease-drafts/${draftId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ action })
-      });
-
-      if (!response.ok) throw new Error('Failed to update draft status');
-
-      toast({
-        title: `Draft ${action === 'approve' ? 'Approved' : 'Rejected'}`,
-        description: `The lease draft has been ${action === 'approve' ? 'approved' : 'rejected'}.`
-      });
-
-      if (onUpdate) onUpdate();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update draft status",
-        variant: "destructive"
-      });
-    } finally {
-      setLoadingAction(null);
-    }
   };
 
   return (
@@ -95,7 +50,7 @@ export default function LeaseDraftsCard({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          { drafts &&  drafts.length > 0 ? (
+          {drafts.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -133,53 +88,20 @@ export default function LeaseDraftsCard({
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => handleViewHistory(draft)}
+                            onClick={() => handleViewClick(draft)}
                           >
-                            <History className="h-4 w-4 mr-2" />
-                            History
+                            View
                           </Button>
-
-                          {/* Negotiate button for clients */}
-                          {userRole === 'client' && draft.status === 'client_review' && (
+                          
+                          {draft.status === 'client_review' && !isStaff && (
                             <Button 
                               variant="outline" 
                               size="sm"
-                              onClick={() => handleNegotiate(draft)}
+                              onClick={() => handleNegotiateClick(draft)}
                             >
                               <MessageSquare className="h-4 w-4 mr-2" />
                               Negotiate
                             </Button>
-                          )}
-                          
-                          {/* Approve/Reject buttons for staff */}
-                          {isStaff && draft.status === 'manager_review' && (
-                            <>
-                              <Button 
-                                size="sm"
-                                onClick={() => handleStatusUpdate(draft.id, 'approve')}
-                                disabled={loadingAction === draft.id}
-                              >
-                                {loadingAction === draft.id ? (
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                ) : (
-                                  <Check className="h-4 w-4 mr-2" />
-                                )}
-                                Approve
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={() => handleStatusUpdate(draft.id, 'reject')}
-                                disabled={loadingAction === draft.id}
-                              >
-                                {loadingAction === draft.id ? (
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                ) : (
-                                  <X className="h-4 w-4 mr-2" />
-                                )}
-                                Reject
-                              </Button>
-                            </>
                           )}
                         </div>
                       </TableCell>
@@ -194,6 +116,20 @@ export default function LeaseDraftsCard({
         </CardContent>
       </Card>
 
+      {/* Lease Details Dialog */}
+      {selectedDraft && (
+        <LeaseDetailsDialog
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+          draft={selectedDraft}
+          onNegotiate={() => {
+            setDetailsDialogOpen(false);
+            setNegotiationDialogOpen(true);
+          }}
+          isStaff={isStaff}
+        />
+      )}
+
       {/* Negotiation Dialog */}
       {selectedDraft && (
         <NegotiationDialog
@@ -201,18 +137,6 @@ export default function LeaseDraftsCard({
           onOpenChange={setNegotiationDialogOpen}
           draft={selectedDraft}
           onSuccess={onUpdate}
-          userRole={userRole}
-        />
-      )}
-
-      {/* History Dialog */}
-      {selectedDraft && (
-        <NegotiationHistoryDialog
-          open={historyDialogOpen}
-          onOpenChange={setHistoryDialogOpen}
-          draftId={selectedDraft.id}
-          userRole={userRole}
-          onUpdate={onUpdate}
         />
       )}
     </>

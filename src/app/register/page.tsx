@@ -1,29 +1,80 @@
 "use client"
 
-// pages/register.tsx
 import Head from 'next/head';
 import Link from 'next/link';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+// Branch data - you could also fetch this from an API
+const BRANCHES = [
+  { id: 1, name: 'Hisar' },
+  { id: 2, name: 'Delhi' },
+  { id: 3, name: 'Mumbai' },
+  // Add more branches as needed
+];
+
+// Role options for staff
+const STAFF_ROLES = [
+  { value: 'manager', label: 'Manager' },
+  { value: 'assistant', label: 'Assistant' },
+  // Add more roles if needed
+];
 
 export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [name, setName] = useState('');
   const [userType, setUserType] = useState('client');
+  const [role, setRole] = useState('assistant');
+  const [branchId, setBranchId] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle registration logic here
-    console.log('Registration attempt:', { 
-      email, 
-      password, 
-      firstName, 
-      lastName, 
-      userType 
-    });
-    // In a real app, you would call an API endpoint
+    setError('');
+    setSuccess('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          role: userType === 'client' ? 'client' : role,
+          branch_id: branchId
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+
+      setSuccess(data.message || 
+        (userType === 'client' 
+          ? 'Registration successful!' 
+          : 'Staff application submitted successfully! Waiting for approval.')
+      );
+      
+      setTimeout(() => {
+        router.push(userType === 'client' ? '/' : '/login');
+      }, 2000);
+    } catch (err: any) {
+      setError(err.message || 'Registration failed. Please try again.');
+    }
   };
 
   return (
@@ -31,7 +82,6 @@ export default function Register() {
       <Head>
         <title>Register - DreamHome</title>
         <meta name="description" content="Create a new DreamHome account" />
-        <link rel="icon" href="/favicon.ico" />
       </Head>
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -45,6 +95,26 @@ export default function Register() {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {error && (
+            <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 bg-green-50 border-l-4 border-green-500 p-4">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm text-green-700">{success}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="user-type" className="block text-sm font-medium text-gray-700">
@@ -57,45 +127,26 @@ export default function Register() {
                   onChange={(e) => setUserType(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
-                  <option value="client">Client (Renter)</option>
-                  <option value="staff">Staff (Property Manager)</option>
+                  <option value="client">Client</option>
+                  <option value="staff">Staff Member</option>
                 </select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label htmlFor="first-name" className="block text-sm font-medium text-gray-700">
-                  First name
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="first-name"
-                    name="first-name"
-                    type="text"
-                    required
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="last-name" className="block text-sm font-medium text-gray-700">
-                  Last name
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="last-name"
-                    name="last-name"
-                    type="text"
-                    required
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  />
-                </div>
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full Name
+              </label>
+              <div className="mt-1">
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
               </div>
             </div>
 
@@ -117,6 +168,50 @@ export default function Register() {
               </div>
             </div>
 
+            {userType === 'staff' && (
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                  Staff Role
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    {STAFF_ROLES.map((staffRole) => (
+                      <option key={staffRole.value} value={staffRole.value}>
+                        {staffRole.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label htmlFor="branch" className="block text-sm font-medium text-gray-700">
+                {userType === 'client' ? 'Preferred Branch' : 'Assigned Branch'}
+              </label>
+              <div className="mt-1">
+                <select
+                  id="branch"
+                  value={branchId}
+                  onChange={(e) => setBranchId(e.target.value)}
+                  required
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  <option value="">Select a branch</option>
+                  {BRANCHES.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
@@ -127,6 +222,7 @@ export default function Register() {
                   name="password"
                   type="password"
                   required
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
@@ -172,7 +268,7 @@ export default function Register() {
                 type="submit"
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
-                Create account
+                {userType === 'client' ? 'Create Account' : 'Submit Application'}
               </button>
             </div>
           </form>

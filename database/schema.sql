@@ -99,3 +99,54 @@ CREATE TABLE property_photos (
   photo_url VARCHAR(255),
   FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
 );
+
+CREATE TABLE viewrequests (
+  request_id INT AUTO_INCREMENT PRIMARY KEY,
+  client_id INT NOT NULL,
+  property_id INT NOT NULL,
+  assistant_id INT,
+  status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+  scheduled_time DATETIME NOT NULL,
+  message TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (client_id) REFERENCES Users(user_id),
+  FOREIGN KEY (property_id) REFERENCES Properties(property_id),
+  FOREIGN KEY (assistant_id) REFERENCES Users(user_id)
+);
+
+CREATE TABLE lease_draft (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  property_id INT NOT NULL,
+  client_id INT NOT NULL,
+  current_terms JSON NOT NULL, 
+  status ENUM('draft','client_review','manager_review','approved','signed'),
+  version INT DEFAULT 1,
+  FOREIGN KEY (property_id) REFERENCES properties(id),
+  FOREIGN KEY (client_id) REFERENCES users(id)
+);
+
+CREATE TABLE negotiations (
+  id int INT KEY AUTO_INCREMENT 
+  draft_id int 
+  proposed_terms json 
+  status enum('pending','accepted','rejected','countered') 
+  client_id int 
+  staff_id int 
+  staff_response json 
+  response_message text 
+  previous_negotiation_id int 
+  created_at timestamp 
+  responded_at timestamp 
+  message text
+  FOREIGN KEY (draft_id) REFERENCES lease_drafts(id)
+);
+
+CREATE TABLE leases (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  draft_id INT NOT NULL,
+  final_terms JSON NOT NULL,
+  signed_by_client BOOLEAN DEFAULT FALSE,
+  signed_by_agent BOOLEAN DEFAULT FALSE,
+  active_from DATE NOT NULL,
+  FOREIGN KEY (draft_id) REFERENCES lease_draft(id)
+);
