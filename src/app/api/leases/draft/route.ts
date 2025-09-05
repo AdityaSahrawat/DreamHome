@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/database/db';
-import { Property } from '@/src/types';
-import { ResultSetHeader } from 'mysql2';
+// import { query } from '@/database/db';
+import { prismaClient } from '@/database';
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,10 +14,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Check property availability
-    const [property] = await query(
-      `SELECT status FROM properties WHERE id = ?`,
-      [property_id]
-    ) as Property[];
+    const property = await prismaClient.property.findUnique({
+      where: { id: Number(property_id) }
+    });
 
     if (!property) {
       return NextResponse.json(
@@ -42,22 +40,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await query(
-      `INSERT INTO lease_draft 
-       (property_id, client_id, current_terms, status, version)
-       VALUES (?, ?, ?, 'draft', 1)`,
-      [property_id, client_id, JSON.stringify(terms)]
-    ) as ResultSetHeader;
+    const draft = await prismaClient.leaseDraft.create({
+      data: {
+        propertyId: property.id,
+        clientId: client_id,
+        currentTerms: terms,
+        status: 'draft',
+        version: 1
+      }
+    });
 
-    // Update property status to "in_negotiation"
-    // await query(
-    //   `UPDATE properties SET status = 'in_negotiation' WHERE id = ?`,
-    //   [property_id]
-    // );
+    // Optionally update property status to "in_negotiation"
+    // await prismaClient.property.update({
+    //   where: { id: property.id },
+    //   data: { status: 'in_negotiation' }
+    // });
 
     return NextResponse.json(
       { 
-        id: result.insertId, 
+        id: draft.id, 
         message: 'Draft created successfully',
         status: 'draft'
       },

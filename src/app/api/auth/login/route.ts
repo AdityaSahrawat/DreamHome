@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { query } from '@/database/db';
+import { prismaClient } from '@/database';
 import jwt from 'jsonwebtoken';
-import { Client, Staff, Owner } from '@/src/types';
 
 const JWT_SECRET = '123';
 
@@ -17,35 +16,12 @@ export async function POST(req: Request) {
     }
 
     try {
-        // Check the client table
-        const [client] = await query(
-            'SELECT * FROM client WHERE email = ?',
-            [email]
-        ) as Client[];
+        // Check the user table for any user with this email
+        const user = await prismaClient.user.findUnique({
+            where: { email: email }
+        });
 
-        let user: Client | Staff | Owner | null = client;
-
-        if (!user) {
-            // Check the staff table
-            const [staff] = await query(
-                'SELECT * FROM staff WHERE email = ?',
-                [email]
-            ) as Staff[];
-
-            user = staff;
-
-            if (!user) {
-                // Check the owner table
-                const [owner] = await query(
-                    'SELECT * FROM owners WHERE email = ?',
-                    [email]
-                ) as Owner[];
-
-                user = owner;
-            }
-        }
-
-        // If no user was found in any table
+        // If no user was found
         if (!user) {
             return NextResponse.json(
                 { message: 'Invalid credentials' },
@@ -63,7 +39,7 @@ export async function POST(req: Request) {
         }
 
         const token = jwt.sign(
-            { id: user.id, role: user.role, branch_id: user.branch_id },
+            { id: user.id, role: user.role, branch_id: user.branchId },
             JWT_SECRET,
         );
 

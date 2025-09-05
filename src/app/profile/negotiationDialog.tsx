@@ -6,7 +6,8 @@ import { Button } from "@/src/components/ui/button";
 import { useToast } from "@/src/components/hook/use-toast";
 import { useState } from "react";
 import TermsEditor from "./termEditor";
-import { Lease_draft, LeaseTerms, negotiations } from "@/src/types";
+import { LeaseDraft } from "./interface";
+import { LeaseTerms, negotiations } from "@/src/types";
 import { RadioGroup, RadioGroupItem } from "@/src/components/ui/radio-group";
 import { Label } from "@/src/components/ui/label";
 import { Loader2 } from "lucide-react";
@@ -14,7 +15,7 @@ import { Loader2 } from "lucide-react";
 interface NegotiationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  draft: Lease_draft;
+  draft: LeaseDraft;
   negotiation?: negotiations;
   onSuccess?: () => void;
   userRole: 'client' | 'assistant' | 'manager' | 'supervisor' | 'owner';
@@ -30,7 +31,7 @@ export default function NegotiationDialog({
 }: NegotiationDialogProps) {
   const { toast } = useToast();
   const [terms, setTerms] = useState<Partial<LeaseTerms>>(
-    negotiation?.proposed_terms || draft.current_terms
+    negotiation?.proposed_terms as Partial<LeaseTerms> || draft.current_terms as Partial<LeaseTerms> || {}
   );
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,10 +100,11 @@ export default function NegotiationDialog({
 
       onOpenChange(false);
       if (onSuccess) onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit negotiation';
       toast({
         title: 'Error',
-        description: error.message || 'Failed to submit negotiation',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
@@ -155,7 +157,7 @@ export default function NegotiationDialog({
 
           {(responseType === 'counter' || !negotiation) && (
             <TermsEditor 
-              currentTerms={draft.current_terms}
+              currentTerms={draft.current_terms as unknown as LeaseTerms}
               proposedTerms={terms}
               onChange={setTerms}
             />

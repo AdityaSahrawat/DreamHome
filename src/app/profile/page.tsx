@@ -6,17 +6,16 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { Card, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
-import { UserCircle, HomeIcon, FileText, PlusIcon } from "lucide-react";
+import { UserCircle, PlusIcon } from "lucide-react";
 import Navbar from "@/src/components/navbar";
 import { useToast } from "@/src/components/hook/use-toast";
 import UserInfoCard from "./userInfo";
-import LeasesCard from "./leaseCard";
+import LeaseDraftsCard from "./leaseCard";
 import PropertiesCard from "./propertiesCard";
 import ManagerTabs from "./managerTab";
+import BranchManagement from "./BranchManagement";
 import ConfirmationDialog from "./confirmationDialog";
 import { Loader2 } from "lucide-react";
-import LeaseDraftsCard from './leaseDraftCard';
-import CreateLeaseDialog from './createLeaseDialog';
 
 type User = {
   id: string;
@@ -29,14 +28,14 @@ type User = {
 
 type ProfileData = {
   user: User;
-  leases?: any[];
+  leases?: Lease[];
   properties?: any[];
   staffApplications?: any[];
   pendingProperties?: any[];
   assistants?: any[];
   leaseRequests?: any[];
   viewRequests?: any[];
-  leaseDrafts? : any[]
+  leaseDrafts? : LeaseDraft[]
 };
 
 interface Lease {
@@ -67,7 +66,7 @@ const DashboardPage = () => {
   const { toast } = useToast();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [createLeaseDialogOpen, setCreateLeaseDialogOpen] = useState(false);
+  // const [createLeaseDialogOpen, setCreateLeaseDialogOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmationDialog, setConfirmationDialog] = useState({
     open: false,
@@ -99,7 +98,7 @@ const DashboardPage = () => {
       open: true,
       action: status,
       propertyId,
-      assistantId,
+      assistantId: assistantId || "",
       title: status === 'approved' ? "Approve Property" : "Reject Property"
     });
   };
@@ -289,8 +288,7 @@ const DashboardPage = () => {
         {/* Client-specific content */}
         {profileData.user.role === 'client'  && (
         <>
-          {profileData.leases && <LeasesCard leases={profileData.leases} />}
-          {profileData.leaseDrafts && <LeaseDraftsCard drafts={profileData.leaseDrafts} />}
+          {profileData.leaseDrafts && <LeaseDraftsCard drafts={profileData.leaseDrafts} userRole={profileData.user.role as 'client'} onUpdate={fetchProfileData} />}
         </>
       )}
 
@@ -313,7 +311,12 @@ const DashboardPage = () => {
             onScheduleStatusChange={handleScheduleStatusChange}
             onStaffApplicationStatusChange={handleStaffApplicationStatusChange}
           />
-)}
+        )}
+
+        {/* Owner-specific content */}
+        {profileData.user.role === 'owner' && (
+          <BranchManagement />
+        )}
 
         {profileData.user.role === "assistant" && (
           <>

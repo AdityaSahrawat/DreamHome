@@ -1,9 +1,9 @@
 // pages/api/register.ts
-import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from "@/database/db"
+// import { query } from "@/database/db"
+import { prismaClient } from '@/database';
 import { NextResponse } from 'next/server';
 
-export async function POST(req: Request, res: NextApiResponse) {
+export async function POST(req: Request) {
     const { name, email, password, role, branch_id } = await req.json();
 
     if (!name || !email || !password || !role || !branch_id) {
@@ -11,37 +11,40 @@ export async function POST(req: Request, res: NextApiResponse) {
     }
 
     try {
-        const user = await query(
-            'SELECT * FROM users WHERE email = ?',
-            [email]
-        );
-        console.log(user)
-        if (Array.isArray(user) && user.length > 0) {
+        const existingUser = await prismaClient.user.findUnique({
+            where: { email }
+        });
+        if (existingUser) {
             return NextResponse.json(
                 { message: 'Email already exists' },
                 { status: 400 }
             );
         }
 
-        if (role === 'client') { 
-            await query(
-                'INSERT INTO client (name, email, password, branch_id) VALUES (?, ?, ?, ?)',
-                [name, email, password, branch_id]
-            );
-            await query(
-                'INSERT INTO users (email, role) VALUES (?, ?)',
-                [email, role]
-            );
-            return NextResponse.json({ message: "Staff application submitted successfully" }, { status: 201 });
+        if (role === 'client') {
+            await prismaClient.user.create({
+                data: {
+                    name,
+                    email,
+                    password,
+                    role,
+                    branchId: branch_id
+                }
+            });
+            return NextResponse.json({ message: "Client registered successfully" }, { status: 201 });
         } else if (['manager', 'supervisor', 'assistant'].includes(role)) {
-            await query(
-                'INSERT INTO staffApplications (email , role, branch_id, password , name) VALUES (?, ?, ?, ? , ?)',
-                [email , role, branch_id, password , name]
-            );
+            await prismaClient.staffApplication.create({
+                data: {
+                    email,
+                    role,
+                    branchId: branch_id,
+                    tempPassword: password,
+                    name
+                }
+            });
             return NextResponse.json({ message: "Staff application submitted successfully" }, { status: 201 });
         } else {
             return NextResponse.json({ message: "Invalid role" }, { status: 400 });
-
         }
     } catch (error) {
         console.error("Error in register API:", error);

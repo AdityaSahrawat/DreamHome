@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateToken } from '@/src/middleware';
 
-const JWT_SECRET = '123';
-
 export async function GET(req: NextRequest) {
     try {
 

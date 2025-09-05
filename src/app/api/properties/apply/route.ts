@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/database/db';
 import { authenticateToken } from '@/src/middleware';
-import { Property } from '@/src/types';
-import { ResultSetHeader } from 'mysql2';
+import { prismaClient } from '@/database';
 
 export async function POST(req: NextRequest) {
     try {
@@ -30,20 +28,28 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const results = await query(
-            'INSERT INTO properties (client_id, title, description, sqft , type , latitude ,longitude , bathrooms , bedrooms,city ,price, address,year_built , status, branch_id) VALUES (?, ?, ?, ?,?, ?, ?, ?,?,?,?,?,?,?,?)',
-            [id, title, description,sqft,type,latitude,longitude,bathrooms,bedrooms,city, price, address,year_built, "pending", branch_id]
-        ) as ResultSetHeader;
-        let propertyId: number;
-        
-        if (Array.isArray(results)) {
-            propertyId = results[0].insertId;
-        } else {
-            propertyId = results.insertId;
-        }
+
+        const property = await prismaClient.property.create({
+            data: {
+                title,
+                description,
+                sqft,
+                latitude,
+                longitude,
+                bathrooms,
+                bedrooms,
+                city,
+                price,
+                address,
+                yearBuilt: year_built,
+                status: 'pending',
+                branchId: branch_id,
+                agentId: id // Assuming client is agent for new property
+            }
+        });
 
         return NextResponse.json(
-            { message: 'Property application submitted successfully', propertyId },
+            { message: 'Property application submitted successfully', propertyId: property.id },
             { status: 201 }
         );
     } catch (error) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/database/db';
+import { prismaClient } from '@/database';
 import { authenticateToken } from '@/src/middleware';
 import path from 'path';
 import { promises as fs } from 'fs';
@@ -54,10 +54,12 @@ export async function POST(request: NextRequest,{ params }: { params: { id: stri
         await fs.writeFile(filePath, Buffer.from(buffer));
 
         const photoUrl = `/uploads/${filename}`;
-        await query(
-          'INSERT INTO property_photos (property_id, photo_url) VALUES (?, ?)',
-          [propertyId, photoUrl]
-        );
+        await prismaClient.propertyPhoto.create({
+          data: {
+            propertyId: parseInt(propertyId),
+            photoUrl: photoUrl
+          }
+        });
 
         uploadedFiles.push(filename);
       }

@@ -1,33 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/database/db';
-import { authenticateToken } from '@/src/middleware';
+import {NextResponse } from 'next/server';
+import { prismaClient } from '@/database';
+// import { authenticateToken } from '@/src/middleware';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const authResult = await authenticateToken(request);
-    if (authResult instanceof NextResponse) return authResult;
-
-    const properties = await query('SELECT * FROM properties WHERE status = "approved" ORDER BY created_at DESC') as any[]
-    
-    const photos = await query('SELECT property_id, photo_url FROM property_photos') as any[]
-    
-    const photosByProperty: Record<string, string[]> = {};
-    photos.forEach((photo: any) => {
-      if (!photosByProperty[photo.property_id]) {
-        photosByProperty[photo.property_id] = [];
-      }
-      photosByProperty[photo.property_id].push(photo.photo_url);
+    console.log("000")
+    // const authResult = await authenticateToken(request);
+    // if (authResult instanceof NextResponse) return authResult;
+    console.log("111")
+    const properties = await prismaClient.property.findMany({
+      where: { status: 'approved' },
+      orderBy: { createdAt: 'desc' },
+      include: { photos: true }
     });
-
-    const propertiesWithPhotos = properties.map((property: any) => ({
-      ...property,
-      photos: photosByProperty[property.id] || []
-    }));
-
+    console.log("222")
     return NextResponse.json(
-      { 
-        properties: propertiesWithPhotos 
-      },
+      { properties },
       { status: 200 }
     );
   } catch (error) {

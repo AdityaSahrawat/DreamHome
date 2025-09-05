@@ -1,8 +1,7 @@
 // app/api/leases/schedule/route.ts
-import { query } from '@/database/db';
+import { prismaClient } from '@/database';
 import { authenticateToken } from '@/src/middleware';
 import { NextRequest, NextResponse } from 'next/server';
-import { Property , ViewRequest } from '@/src/types';
 
 
 
@@ -41,46 +40,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const mysqlDatetime = new Date(scheduled_time)
-      .toISOString()
-      .replace('T', ' ')
-      .replace('Z', '')
-      .split('.')[0];
-
-    const properties = await query(
-      'SELECT agent_id FROM properties WHERE id = ?',
-      [property_id]
-    ) as Property[]
-
-    if (!properties || properties.length === 0) {
+    const property = await prismaClient.property.findUnique({
+      where: { id: Number(property_id) }
+    });
+    if (!property || !property.agentId) {
       return NextResponse.json(
-        { error: 'Property not found' },
+        { error: 'Property not found or missing agent' },
         { status: 404 }
       );
     }
-    const assistant_id = properties[0].agent_id;
-
-
-    const result = await query(
-      `INSERT INTO viewRequests 
-       (client_id, property_id, assistant_id, status, scheduled_time, message) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [client_id, property_id, assistant_id, 'pending', mysqlDatetime, message]
-    );
-
-    const viewingRequest = {
-      client_id,
-      property_id,
-      assistant_id,
-      status: 'pending',
-      scheduled_time,
-      message
-    };
-
+    const viewRequest = await prismaClient.viewRequest.create({
+      data: {
+        clientId: client_id,
+        propertyId: property_id,
+        assistantId: property.agentId,
+        status: 'pending',
+        scheduledTime: new Date(scheduled_time),
+        message
+      }
+    });
     return NextResponse.json(
       { 
         success: true, 
-        data: viewingRequest,
+        data: viewRequest,
         message: 'Viewing request submitted successfully' 
       },
       { status: 201 }
@@ -120,10 +102,10 @@ export async function PUT(req: NextRequest) {
                 { status: 400 }
             );
         }
-        await query(
-            'UPDATE viewrequests SET status = ? WHERE request_id = ?',
-            [status, requestId]
-        );
+    await prismaClient.viewRequest.update({
+      where: { id: Number(requestId) },
+      data: { status }
+    });
 
         
         if (status === 'approved') {

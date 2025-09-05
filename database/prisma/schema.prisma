@@ -1,0 +1,251 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  client
+  owner
+  manager
+  supervisor
+  assistant
+}
+
+enum ApplicationStatus {
+  pending
+  approved
+  rejected
+}
+
+enum PropertyStatus {
+  pending
+  approved
+  rejected
+  sold
+  rented
+}
+
+enum RequestStatus {
+  pending
+  approved
+  rejected
+}
+
+enum LeaseDraftStatus {
+  draft
+  client_review
+  manager_review
+  approved
+  signed
+}
+
+enum NegotiationStatus {
+  pending
+  accepted
+  rejected
+  countered
+}
+
+// MODELS
+
+// Consolidated User model for clients, staff, and owners
+model User {
+  id                      Int           @id @default(autoincrement())
+  email                   String        @unique
+  emailVerified           DateTime?
+  name                    String
+  password                String?
+  image                   String?
+  role                    Role          @default(client)
+  provider                String?       @default("manual")
+  branchId                Int?
+  createdAt               DateTime      @default(now())
+  branch                  Branch?       @relation(fields: [branchId], references: [id])
+  notifications           Notification[]
+  propertiesAsAgent       Property[]    @relation("AgentProperties")
+  viewRequestsAsClient    ViewRequest[] @relation("ClientViewRequests")
+  viewRequestsAsAssistant ViewRequest[] @relation("AssistantViewRequests")
+  leaseDraftsAsClient     LeaseDraft[]
+  negotiationsAsClient    Negotiation[] @relation("ClientNegotiations")
+  negotiationsAsStaff     Negotiation[] @relation("StaffNegotiations")
+  accounts                Account[]
+  sessions                Session[]
+}
+
+model Branch {
+  id                Int                 @id @default(autoincrement())
+  name              String
+  location          String
+  createdAt         DateTime            @default(now())
+  users             User[]
+  staffApplications StaffApplication[]
+  notifications     Notification[]
+  properties        Property[]
+}
+
+model StaffApplication {
+  id           Int               @id @default(autoincrement())
+  email        String            @unique
+  name         String
+  role         Role
+  status       ApplicationStatus @default(pending)
+  tempPassword String?
+  branchId     Int?
+  createdAt    DateTime          @default(now())
+  branch       Branch?           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  message   String   @db.Text
+  role      Role
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    Int
+  branchId  Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+}
+
+model Property {
+  id          Int            @id @default(autoincrement())
+  title       String
+  description String?        @db.Text
+  price       Decimal        @db.Decimal(15, 2)
+  address     String
+  city        String
+  latitude    Decimal?       @db.Decimal(10, 8)
+  longitude   Decimal?       @db.Decimal(11, 8)
+  bedrooms    Int
+  bathrooms   Decimal        @db.Decimal(4, 1)
+  sqft        Decimal        @db.Decimal(10, 2)
+  yearBuilt   Int?
+  status      PropertyStatus @default(pending)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  agentId     Int?
+  branchId    Int?
+  agent       User?          @relation("AgentProperties", fields: [agentId], references: [id], onDelete: Cascade)
+  branch      Branch?        @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  photos      PropertyPhoto[]
+  viewRequests ViewRequest[]
+  leaseDraft  LeaseDraft?
+}
+
+model PropertyPhoto {
+  id         Int      @id @default(autoincrement())
+  photoUrl   String
+  propertyId Int
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+}
+
+model ViewRequest {
+  id            Int           @id @default(autoincrement())
+  status        RequestStatus @default(pending)
+  scheduledTime DateTime
+  message       String?       @db.Text
+  createdAt     DateTime      @default(now())
+  clientId      Int
+  propertyId    Int
+  assistantId   Int?
+  client        User          @relation("ClientViewRequests", fields: [clientId], references: [id])
+  property      Property      @relation(fields: [propertyId], references: [id])
+  assistant     User?         @relation("AssistantViewRequests", fields: [assistantId], references: [id])
+}
+
+model LeaseDraft {
+  id           Int               @id @default(autoincrement())
+  currentTerms Json
+  status       LeaseDraftStatus
+  version      Int               @default(1)
+  propertyId   Int               @unique
+  clientId     Int
+  property     Property          @relation(fields: [propertyId], references: [id])
+  client       User              @relation(fields: [clientId], references: [id])
+  negotiations Negotiation[]
+  lease        Lease?
+}
+
+model Negotiation {
+  id                    Int               @id @default(autoincrement())
+  proposedTerms         Json
+  status                NegotiationStatus
+  staffResponse         Json?
+  responseMessage       String?           @db.Text
+  message               String?           @db.Text
+  createdAt             DateTime          @default(now())
+  respondedAt           DateTime?
+  draftId               Int
+  clientId              Int
+  staffId               Int
+  previousNegotiationId Int?              @unique
+  draft                 LeaseDraft        @relation(fields: [draftId], references: [id])
+  client                User              @relation("ClientNegotiations", fields: [clientId], references: [id])
+  staff                 User              @relation("StaffNegotiations", fields: [staffId], references: [id])
+  previousNegotiation   Negotiation?      @relation("NegotiationHistory", fields: [previousNegotiationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  nextNegotiation       Negotiation?      @relation("NegotiationHistory")
+}
+
+model Lease {
+  id             Int        @id @default(autoincrement())
+  finalTerms     Json
+  signedByClient Boolean    @default(false)
+  signedByAgent  Boolean    @default(false)
+  activeFrom     DateTime   @db.Date
+  draftId        Int        @unique
+  draft          LeaseDraft @relation(fields: [draftId], references: [id])
+}
+
+// NextAuth.js models
+model Account {
+  id                String  @id @default(cuid())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model VerificationEmail {
+  id       Int      @id @default(autoincrement())
+  email    String   @unique
+  code     String
+  expireAt DateTime
+  createdAt DateTime @default(now())
+}

@@ -1,78 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/database/db';
-import { ResultSetHeader, RowDataPacket } from 'mysql2';
-
-// Helper function to check if result is an array
-function isArrayResult(result: any): result is RowDataPacket[] {
-  return Array.isArray(result);
-}
+import { prismaClient } from '@/database';
 
 export async function POST(req: NextRequest) {
   try {
     const { draft_id } = await req.json();
 
-    const draftResult = await query(
-      `SELECT d.*, p.agent_id 
-       FROM lease_draft d
-       JOIN properties p ON d.property_id = p.id
-       WHERE d.id = ?`,
-      [draft_id]
-    );
+    // 1. Get the draft with property and agent information
+    const draft = await prismaClient.leaseDraft.findUnique({
+      where: { id: draft_id },
+      include: {
+        property: {
+          select: { agentId: true, id: true }
+        }
+      }
+    });
 
-    if (!isArrayResult(draftResult)) {
+    if (!draft) {
       return NextResponse.json(
-        { message: 'Unexpected database response format' },
-        { status: 500 }
-      );
-    }
-
-    if (draftResult.length === 0) {
-      return NextResponse.json(
-        { message: 'Draft not found or not approved' },
+        { message: 'Draft not found' },
         { status: 404 }
       );
     }
 
-    const draft = draftResult[0];
-
     // 2. Create the final lease
-    const leaseResult = await query(
-      `INSERT INTO leases 
-       (draft_id, final_terms, active_from, signed_by_client, signed_by_agent)
-       VALUES (?, ?, ?, FALSE, FALSE)`,
-      [
-        draft_id,
-        draft.current_terms,
-        new Date(draft.current_terms.dates.start) // Extract start date from terms
-      ]
-    ) as ResultSetHeader;
+    const terms = draft.currentTerms as Record<string, unknown>;
+    const dates = terms?.dates as Record<string, unknown>;
+    const startDate = dates?.start as string;
+    
+    const lease = await prismaClient.lease.create({
+      data: {
+        draftId: draft_id,
+        finalTerms: draft.currentTerms as object,
+        activeFrom: startDate ? new Date(startDate) : new Date(),
+        signedByClient: false,
+        signedByAgent: false
+      }
+    });
 
     // 3. Update property status to 'rented'
-    await query(
-      `UPDATE properties SET status = 'rented' WHERE id = ?`,
-      [draft.property_id]
-    );
+    await prismaClient.property.update({
+      where: { id: draft.property.id },
+      data: { status: 'rented' }
+    });
 
     // 4. Update draft status to 'signed'
-    await query(
-      `UPDATE lease_draft SET status = 'signed' WHERE id = ?`,
-      [draft_id]
-    );
+    await prismaClient.leaseDraft.update({
+      where: { id: draft_id },
+      data: { status: 'signed' }
+    });
 
     return NextResponse.json(
       { 
-        lease_id: leaseResult.insertId,
+        lease_id: lease.id,
         message: 'Lease finalized successfully'
       },
       { status: 201 }
     );
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Finalize lease error:', error);
     return NextResponse.json(
       { 
         message: 'Failed to finalize lease',
-        error: error.message 
+        error: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );

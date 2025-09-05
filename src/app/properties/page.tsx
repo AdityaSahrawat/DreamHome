@@ -45,14 +45,14 @@ const Index = () => {
   const fetchAllProperties = async () => {
     setIsLoading(true);
     setError(null);
-    const token = window.localStorage.getItem("token")
+    // const token = window.localStorage.getItem("token")
     
     try {
       const response = await axios.get('/api/properties/all', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        // headers: {
+        //   Authorization: `Bearer ${token}`,
+        //   'Content-Type': 'application/json',
+        // },
       });
       console.log(response.data)
 

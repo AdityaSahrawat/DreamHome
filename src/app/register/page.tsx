@@ -93,6 +93,7 @@ export default function Register() {
           router.push('/login');
         }, 2000);
       }
+      // eslint-disable-next-line
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
     }

@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/database/db';
+import { prismaClient } from '@/database';
 import { authenticateToken } from '@/src/middleware';
 import { LeaseTerms } from '@/src/types';
 
-function validateLeaseTerms(terms: any): terms is LeaseTerms {
+function validateLeaseTerms(terms: unknown): terms is LeaseTerms {
+  if (typeof terms !== 'object' || terms === null) return false;
+  const termsObj = terms as Record<string, unknown>;
+  
   return (
-    typeof terms?.financial?.rent === 'number' &&
-    typeof terms?.financial?.deposit === 'number' &&
-    typeof terms?.dates?.start === 'string' &&
-    typeof terms?.dates?.end === 'string'
+    typeof termsObj?.financial === 'object' &&
+    termsObj.financial !== null &&
+    typeof (termsObj.financial as Record<string, unknown>)?.rent === 'number' &&
+    typeof (termsObj.financial as Record<string, unknown>)?.deposit === 'number' &&
+    typeof termsObj?.dates === 'object' &&
+    termsObj.dates !== null &&
+    typeof (termsObj.dates as Record<string, unknown>)?.start === 'string' &&
+    typeof (termsObj.dates as Record<string, unknown>)?.end === 'string'
   );
 }
-
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await authenticateToken(req);
@@ -34,11 +40,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     );
   }
 
-  const [nego] = await query(`
-    SELECT * FROM negotiations 
-    WHERE id = ? AND status = 'pending'
-    FOR UPDATE
-  `, [params.id]) as any[];
+  const nego = await prismaClient.negotiation.findFirst({
+    where: {
+      id: Number(params.id),
+      status: 'pending'
+    }
+  });
 
   if (!nego) {
     return NextResponse.json(
@@ -49,50 +56,39 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   // 2. Process staff response
   if (action === 'accept') {
-    await query(`
-      UPDATE lease_draft
-      SET 
-        current_terms = ?,
-        status = 'approved'
-      WHERE id = ?
-    `, [nego.proposed_terms, nego.draft_id]);
+    await prismaClient.leaseDraft.update({
+      where: { id: nego.draftId },
+      data: {
+        currentTerms: nego.proposedTerms as object,
+        status: 'approved'
+      }
+    });
 
   } else if (action === 'counter') {
     // Create new counter offer
-    await query(`
-      INSERT INTO negotiations (
-        draft_id,
-        proposed_terms,
-        client_id,
-        status,
-        previous_negotiation_id,
-        message
-      ) VALUES (?, ?, ?, 'pending', ?, ?)
-    `, [
-      nego.draft_id,
-      JSON.stringify(counter_terms),
-      nego.client_id,
-      nego.id,
-      response_message || 'Staff counter offer'
-    ]);
+    await prismaClient.negotiation.create({
+      data: {
+        draftId: nego.draftId,
+        proposedTerms: counter_terms,
+        clientId: nego.clientId,
+        staffId: auth.id,
+        status: 'pending',
+        previousNegotiationId: nego.id,
+        message: response_message || 'Staff counter offer'
+      }
+    });
   }
 
-  await query(`
-    UPDATE negotiations
-    SET 
-      status = ?,
-      staff_id = ?,
-      staff_response = ?,
-      response_message = ?,
-      responded_at = NOW()
-    WHERE id = ?
-  `, [
-    action === 'accept' ? 'accepted' : 'countered',
-    auth.id,
-    action === 'counter' ? JSON.stringify(counter_terms) : null,
-    response_message,
-    params.id
-  ]);
+  await prismaClient.negotiation.update({
+    where: { id: Number(params.id) },
+    data: {
+      status: action === 'accept' ? 'accepted' : 'countered',
+      staffId: auth.id,
+      staffResponse: action === 'counter' ? counter_terms : null,
+      responseMessage: response_message,
+      respondedAt: new Date()
+    }
+  });
 
   return NextResponse.json({ success: true });
 }

@@ -55,10 +55,11 @@ export default function NegotiationHistoryDialog({
       
       const data = await response.json();
       setNegotiations(data);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load negotiation history';
       toast({
         title: 'Error',
-        description: error.message || 'Failed to load negotiation history',
+        description: errorMessage,
         variant: 'destructive'
       });
     } finally {
@@ -116,7 +117,7 @@ export default function NegotiationHistoryDialog({
                       <TableRow key={negotiation.id}>
                         <TableCell className="capitalize">
                           {/* {negotiation.initiated_by} */}
-                          "client"
+                          client
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(negotiation.status)}
@@ -161,10 +162,14 @@ export default function NegotiationHistoryDialog({
           onOpenChange={setNegotiationDialogOpen}
           draft={{
             id: draftId,
+            propertyId: 0,
+            property_id: 0,
+            clientId: 0,
+            client_id: 0,
             current_terms: selectedNegotiation.proposed_terms,
             propertyTitle: "",
             propertyAddress: "",
-            status: "",
+            status: "draft",
             version: 0
           }}
           negotiation={selectedNegotiation}

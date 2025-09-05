@@ -1,13 +1,11 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import { query } from "@/database/db"
+
+// import { query } from "@/database/db"
+import { prismaClient } from '@/database';
 import { NextResponse } from 'next/server';
 
-export async function GET(req: Request, res: NextApiResponse) {
+export async function GET() {
     try {
-
-        const result = await query(
-            'Select * from branch'
-        )
+    const result = await prismaClient.branch.findMany();
 
         return NextResponse.json({
             result

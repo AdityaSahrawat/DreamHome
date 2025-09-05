@@ -13,6 +13,9 @@ export interface Lease {
   export interface LeaseDraft {
     id: number;
     propertyId: number;
+    property_id: number; // For backward compatibility
+    clientId: number;
+    client_id: number; // For backward compatibility
     propertyTitle: string;
     propertyAddress: string;
     current_terms : JSON

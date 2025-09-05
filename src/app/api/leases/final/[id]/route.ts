@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/database/db';
+import { prismaClient } from '@/database';
 import { authenticateToken } from '@/src/middleware';
-import { ResultSetHeader } from 'mysql2';
-import { Lease_draft, LeaseTerms } from '@/src/types';
 
 
 
@@ -15,10 +13,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     const draft_id = params.id;
 
     // 1. Verify draft is in approved state
-    const [draft] = await query(`
-      SELECT * FROM lease_draft 
-      WHERE id = ? AND status = 'approved'
-    `, [draft_id]) as Lease_draft[];
+
+    const draft = await prismaClient.leaseDraft.findFirst({
+      where: {
+        id: Number(draft_id),
+        status: 'approved'
+      },
+      include: { property: true }
+    });
+
 
     if (!draft) {
       return NextResponse.json(
@@ -27,70 +30,55 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       );
     }
 
+
     // 2. Type-safe terms parsing
-    // Quick fix for your existing code
-const terms = JSON.parse(JSON.stringify(draft.current_terms)) as LeaseTerms;
+    const terms = typeof draft.currentTerms === 'string'
+      ? JSON.parse(draft.currentTerms)
+      : draft.currentTerms;
+
 
     if (action === 'accept') {
       // 3. Create final lease
-      const [leaseResult] = await query(`
-        INSERT INTO leases (
-          draft_id,
-          final_terms,
-          signed_by_client,
-          signed_by_agent,
-          active_from
-        ) VALUES (?, ?, ?, ?, ?)
-      `, [
-        draft_id,
-        draft.current_terms,
-        auth.role === 'client',
-        auth.role === 'assistant',
-        new Date(terms.dates.start)
-      ]) as ResultSetHeader[];
+      const lease = await prismaClient.lease.create({
+        data: {
+          draftId: draft.id,
+          finalTerms: terms,
+          signedByClient: auth.role === 'client',
+          signedByAgent: auth.role === 'assistant',
+          activeFrom: new Date(terms.dates.start)
+        }
+      });
 
       // 4. Update all related statuses
-      await query('START TRANSACTION');
-      
-      await query(`
-        UPDATE lease_draft 
-        SET status = 'signed' 
-        WHERE id = ?
-      `, [draft_id]);
-
-      await query(`
-        UPDATE properties 
-        SET status = 'rented' 
-        WHERE id = ?
-      `, [draft.property_id]);
-
-      await query(`
-        UPDATE negotiations
-        SET status = 'completed'
-        WHERE draft_id = ?
-      `, [draft_id]);
-
-      await query('COMMIT');
+      await prismaClient.leaseDraft.update({
+        where: { id: draft.id },
+        data: { status: 'signed' }
+      });
+      await prismaClient.property.update({
+        where: { id: draft.propertyId },
+        data: { status: 'rented' }
+      });
+      await prismaClient.negotiation.updateMany({
+        where: { draftId: draft.id },
+        data: { status: 'accepted' }
+      });
 
       return NextResponse.json({
-        lease_id: leaseResult.insertId,
+        lease_id: lease.id,
         start_date: terms.dates.start
       });
 
     } else { // Rejection
-      await query(`
-        UPDATE lease_draft
-        SET status = 'client_review'
-        WHERE id = ?
-      `, [draft_id]);
-
+      await prismaClient.leaseDraft.update({
+        where: { id: draft.id },
+        data: { status: 'client_review' }
+      });
       return NextResponse.json({ 
         message: 'Lease terms rejected' 
       });
     }
 
   } catch (error) {
-    await query('ROLLBACK');
     console.error('Finalization error:', error);
     return NextResponse.json(
       { message: 'Failed to finalize lease' },

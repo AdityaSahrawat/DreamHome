@@ -2,12 +2,11 @@
 
 import { LeaseTerms } from '@/src/types';
 import { useState } from 'react';
-import { Button } from '@/src/components/ui/button';
 import { Input } from '@/src/components/ui/input';
 import { Label } from '@/src/components/ui/label';
 import { Switch } from '@/src/components/ui/switch';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { cn } from '@/src/lib/utils';
+import { cn } from '@/lib/utils';
 
 interface TermsEditorProps {
   currentTerms: LeaseTerms;
@@ -53,11 +52,13 @@ export default function TermsEditor({
     label: string,
     type: 'number' | 'text' | 'date' | 'checkbox'
   ) => {
-    // @ts-ignore
-    const currentValue = currentTerms[section]?.[field];
-    const proposedValue = proposedTerms[section]?.[field] ?? currentValue;
-    const isModified = proposedTerms[section]?.[field] !== undefined && 
-                      proposedTerms[section]?.[field] !== currentValue;
+    const sectionData = currentTerms[section] as any;
+    const proposedSectionData = proposedTerms[section] as any;
+    
+    const currentValue = sectionData?.[field];
+    const proposedValue = proposedSectionData?.[field] ?? currentValue;
+    const isModified = proposedSectionData?.[field] !== undefined && 
+                      proposedSectionData?.[field] !== currentValue;
 
     return (
       <div className="grid grid-cols-12 items-center gap-4 py-2">
@@ -102,7 +103,6 @@ export default function TermsEditor({
 
   const renderUtilities = () => {
     const currentIncluded = new Set(currentTerms.utilities.included);
-    const currentExcluded = new Set(currentTerms.utilities.not_included);
     const proposedIncluded = new Set(
       proposedTerms.utilities?.included || currentTerms.utilities.included
     );

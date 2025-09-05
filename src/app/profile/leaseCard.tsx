@@ -1,9 +1,9 @@
 import { Card, CardHeader, CardContent, CardTitle } from "@/src/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
 import { Badge } from "@/src/components/ui/badge";
-import { FileText, Edit, MessageSquare, Check, X, History } from "lucide-react";
+import { FileText, MessageSquare, Check, X, History } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
-import Link from "next/link";
+// import Link from "next/link";
 import NegotiationDialog from "./negotiationDialog";
 import { useState } from "react";
 import { LeaseDraft } from "./interface";
@@ -74,6 +74,7 @@ export default function LeaseDraftsCard({
       });
 
       if (onUpdate) onUpdate();
+      // eslint-disable-next-line
     } catch (error) {
       toast({
         title: "Error",

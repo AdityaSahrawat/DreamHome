@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/database/db';
+import { prismaClient } from '@/database';
 import { authenticateToken } from '@/src/middleware';
-import { StaffApplication } from '@/src/types';
-
 
 // PUT /api/applications/[applicationId] - Accept or reject an application
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
@@ -31,12 +29,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         const applicationId = await params.id;
 
         console.log("applicationId : " , applicationId)
-        const applications = await query(
-            'SELECT * FROM staffApplications WHERE application_id = ?',
-            [applicationId]
-        ) as StaffApplication[]
-       
-        if (Array.isArray(applications) && applications.length === 0) {
+        const application = await prismaClient.staffApplication.findUnique({
+            where: { id: Number(applicationId) }
+        });
+        if (!application) {
             return NextResponse.json(
                 { message: 'Application not found' },
                 { status: 404 }
@@ -44,11 +40,11 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         }
 
 
-        const application = applications[0];
+
 
 
         if (role === 'manager') {
-            if (application.branch_id  !== branch_id || !['assistant', 'supervisor'].includes(application.role)) {
+            if (application.branchId !== branch_id || !['assistant', 'supervisor'].includes(application.role)) {
                 return NextResponse.json(
                     { message: 'Insufficient permissions' },
                     { status: 403 }
@@ -62,17 +58,22 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         }
 
 
-        await query(
-            'UPDATE StaffApplications SET status = ? WHERE application_id = ?',
-            [status, applicationId]
-        );
 
+        await prismaClient.staffApplication.update({
+            where: { id: Number(applicationId) },
+            data: { status }
+        });
 
         if (status === 'approved') {
-            await query(
-                'INSERT INTO staff (name , email, role, branch_id, password) VALUES (?, ?, ?, ? , ?)',
-                [application.name , application.email, application.role, application.branch_id, application.password]
-            );
+            await prismaClient.user.create({
+                data: {
+                    name: application.name,
+                    email: application.email,
+                    role: application.role,
+                    branchId: application.branchId,
+                    password: application.tempPassword ?? ''
+                }
+            });
         }
 
 

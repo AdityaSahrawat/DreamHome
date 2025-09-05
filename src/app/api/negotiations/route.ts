@@ -1,11 +1,8 @@
 // app/api/negotiations/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/database/db';
-import { ResultSetHeader, RowDataPacket } from 'mysql2';
+import { prismaClient } from '@/database';
 import { authenticateToken } from '@/src/middleware';
 import { LeaseTerms } from '@/src/types';
-
-
 
 // Enhanced validation
 export function isLeaseTerms(data: unknown): data is LeaseTerms {
@@ -15,13 +12,15 @@ export function isLeaseTerms(data: unknown): data is LeaseTerms {
   
   // Validate financial
   if (typeof terms.financial !== 'object' || terms.financial === null) return false;
-  if (typeof (terms.financial as any).rent !== 'number') return false;
-  if (typeof (terms.financial as any).deposit !== 'number') return false;
+  const financial = terms.financial as Record<string, unknown>;
+  if (typeof financial.rent !== 'number') return false;
+  if (typeof financial.deposit !== 'number') return false;
 
   // Validate dates
   if (typeof terms.dates !== 'object' || terms.dates === null) return false;
-  if (typeof (terms.dates as any).start !== 'string') return false;
-  if (typeof (terms.dates as any).end !== 'string') return false;
+  const dates = terms.dates as Record<string, unknown>;
+  if (typeof dates.start !== 'string') return false;
+  if (typeof dates.end !== 'string') return false;
 
   return true;
 }
@@ -51,10 +50,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Verify draft exists and is in negotiable state
-    const [draft] = await query(
-      `SELECT status FROM lease_draft WHERE id = ?`,
-      [draft_id]
-    ) as any[];
+    const draft = await prismaClient.leaseDraft.findUnique({
+      where: { id: draft_id },
+      select: { status: true }
+    });
 
     if (!draft || !['draft', 'client_review'].includes(draft.status)) {
       return NextResponse.json(
@@ -64,31 +63,26 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Create negotiation record
-    const result = await query(
-      `INSERT INTO negotiations (
-        draft_id,
-        proposed_terms,
-        client_id,
-        message,
-        status
-      ) VALUES (?, ?, ?, ? , 'pending')`,
-      [
-        draft_id,
-        JSON.stringify(proposed_terms),
-        auth.id,  // Track which client created this
-        message || null,
-      ]
-    ) as ResultSetHeader;
+    const negotiation = await prismaClient.negotiation.create({
+      data: {
+        draftId: draft_id,
+        proposedTerms: proposed_terms as object,
+        clientId: auth.id,
+        staffId: auth.id, // Required field - using auth.id as placeholder
+        message: message || null,
+        status: 'pending'
+      }
+    });
 
     // 6. Update draft status
-    await query(
-      `UPDATE lease_draft SET status = 'client_review' WHERE id = ?`,
-      [draft_id]
-    );
+    await prismaClient.leaseDraft.update({
+      where: { id: draft_id },
+      data: { status: 'client_review' }
+    });
 
     return NextResponse.json(
       {
-        negotiation_id: result.insertId,
+        negotiation_id: negotiation.id,
         draft_status: 'client_review',
         message: 'Negotiation started successfully'
       },
@@ -102,23 +96,6 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-interface NegotiationRow extends RowDataPacket {
-  id: number;
-  draft_id: number;
-  proposed_terms: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'countered';
-  message: string;
-  created_at: Date;
-  client_id: number;
-  responded_at?: Date;
-  staff_response?: string;
-  response_message?: string;
-  staff_id?: number;
-  previous_negotiation_id?: number;
-  client_name?: string;
-  staff_name?: string;
 }
 
 export async function GET(req: NextRequest) {
@@ -136,66 +113,53 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Base query with joins
-    let queryStr = `
-      SELECT 
-        n.id,
-        n.draft_id,
-        n.proposed_terms,
-        n.status,
-        n.message,
-        n.created_at,
-        n.client_id,
-        n.responded_at,
-        n.staff_response,
-        n.response_message,
-        n.staff_id,
-        n.previous_negotiation_id,
-        c.name as client_name,
-        s.name as staff_name
-      FROM negotiations n
-      LEFT JOIN client c ON n.client_id = c.id
-      LEFT JOIN staff s ON n.staff_id = s.id
-      WHERE n.draft_id = ?
-    `;
+    // Build where clause based on role
+    const whereClause: Record<string, unknown> = {
+      draftId: parseInt(draft_id)
+    };
 
-    const params: (string | number)[] = [draft_id];
-
-    // Role-based filtering
     if (auth.role === 'client') {
-      queryStr += ` AND n.client_id = ?`;
-      params.push(auth.id);
-    } else {
-      queryStr += ` AND (n.client_id IS NOT NULL OR n.staff_id = ?)`;
-      params.push(auth.id);
+      whereClause.clientId = auth.id;
     }
 
-    queryStr += ` ORDER BY n.created_at DESC`;
-
-    // Execute query
-    const result = await query(queryStr, params) as NegotiationRow[]
+    // Execute query with Prisma
+    const negotiations = await prismaClient.negotiation.findMany({
+      where: whereClause,
+      include: {
+        client: {
+          select: { name: true }
+        },
+        staff: {
+          select: { name: true }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
 
     // Process results
-    const negotiations = (Array.isArray(result) ? result : []).map(nego => ({
+    const processedNegotiations = negotiations.map(nego => ({
       id: nego.id,
-      draft_id: nego.draft_id,
-      proposed_terms: safeJsonParse(nego.proposed_terms),
+      draft_id: nego.draftId,
+      proposed_terms: safeJsonParse(nego.proposedTerms),
       status: nego.status,
       message: nego.message,
-      created_at: nego.created_at,
-      client_id: nego.client_id,
-      responded_at: nego.responded_at,
-      staff_response: safeJsonParse(nego.staff_response),
-      response_message: nego.response_message,
-      staff_id: nego.staff_id,
-      previous_negotiation_id: nego.previous_negotiation_id,
-      client_name: nego.client_name,
-      staff_name: nego.staff_name
+      created_at: nego.createdAt,
+      client_id: nego.clientId,
+      responded_at: nego.respondedAt,
+      staff_response: safeJsonParse(nego.staffResponse),
+      response_message: nego.responseMessage,
+      staff_id: nego.staffId,
+      previous_negotiation_id: nego.previousNegotiationId,
+      client_name: nego.client.name,
+      staff_name: nego.staff.name
     }));
 
-    return NextResponse.json(negotiations);
+    return NextResponse.json(processedNegotiations);
 
   } catch (error) {
+    console.error('Failed to fetch negotiations:', error);
     return NextResponse.json(
       { message: 'Failed to fetch negotiations' },
       { status: 500 }
@@ -204,7 +168,7 @@ export async function GET(req: NextRequest) {
 }
 
 // Helper function for safe JSON parsing
-function safeJsonParse(json: any): any {
+function safeJsonParse(json: unknown): unknown {
   try {
     return typeof json === 'string' ? JSON.parse(json) : json;
   } catch {
