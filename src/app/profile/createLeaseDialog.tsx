@@ -64,8 +64,7 @@ export default function CreateLeaseDialog({
       const response = await fetch('/api/lease-drafts', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           property_id: Number(propertyId),
@@ -104,10 +103,11 @@ export default function CreateLeaseDialog({
         }
       });
       onSuccess();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to create lease';
       toast({
         title: "Error",
-        description: error.message,
+        description: message,
         variant: "destructive"
       });
     } finally {

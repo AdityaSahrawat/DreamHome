@@ -28,14 +28,28 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Validate latitude and longitude ranges
+        if (latitude !== null && latitude !== undefined && (latitude < -90 || latitude > 90)) {
+            return NextResponse.json(
+                { message: 'Latitude must be between -90 and 90 degrees' },
+                { status: 400 }
+            );
+        }
+
+        if (longitude !== null && longitude !== undefined && (longitude < -180 || longitude > 180)) {
+            return NextResponse.json(
+                { message: 'Longitude must be between -180 and 180 degrees' },
+                { status: 400 }
+            );
+        }
 
         const property = await prismaClient.property.create({
             data: {
                 title,
                 description,
                 sqft,
-                latitude,
-                longitude,
+                latitude: latitude && latitude !== 0 ? latitude : null,
+                longitude: longitude && longitude !== 0 ? longitude : null,
                 bathrooms,
                 bedrooms,
                 city,

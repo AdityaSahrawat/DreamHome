@@ -229,7 +229,14 @@ export async function GET(req: NextRequest) {
                     staffApplications: role === 'manager' ? staffApplications : undefined,
                     pendingProperties: role === 'manager' ? pendingProperties : undefined,
                     assistants: role === "manager" ? assistants : undefined,
-                    viewRequests: role === "manager" ? viewRequests : undefined,
+                    viewRequests: role === "manager" ? (viewRequests as any[]).map(v => ({
+                        request_id: v.id,
+                        property_title: v.property?.title,
+                        client_name: v.client?.name,
+                        client_email: v.client?.email,
+                        scheduled_time: v.scheduledTime,
+                        status: v.status
+                    })) : undefined,
                     leaseDrafts: (role === 'assistant' || role === 'manager') ? leaseDrafts.map((draft: unknown) => {
                         const d = draft as Record<string, unknown>;
                         return {

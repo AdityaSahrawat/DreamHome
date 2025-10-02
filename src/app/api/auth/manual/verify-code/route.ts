@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.NEXTAUTH_SECRET || 'your-secret-key';
 export async function POST(req: NextRequest) {
     try {
         const { email, code, password, name } = await req.json();
-
+        console.log(email , code , password , name)
         if (!email || !code || !password || !name) {
             return NextResponse.json(
                 { message: "All fields are required" },

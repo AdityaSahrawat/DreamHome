@@ -7,7 +7,8 @@ import { useToast } from "@/src/components/hook/use-toast";
 import { useState } from "react";
 import TermsEditor from "./termEditor";
 import { LeaseDraft } from "./interface";
-import { LeaseTerms, negotiations } from "@/src/types";
+import { LeaseTerms, Negotiation } from "@/src/types";
+import { formatDateTime } from "@/src/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/src/components/ui/radio-group";
 import { Label } from "@/src/components/ui/label";
 import { Loader2 } from "lucide-react";
@@ -16,22 +17,15 @@ interface NegotiationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   draft: LeaseDraft;
-  negotiation?: negotiations;
+  negotiation?: Negotiation;
   onSuccess?: () => void;
   userRole: 'client' | 'assistant' | 'manager' | 'supervisor' | 'owner';
 }
 
-export default function NegotiationDialog({ 
-  open, 
-  onOpenChange, 
-  draft,
-  negotiation,
-  onSuccess,
-  userRole
-}: NegotiationDialogProps) {
+export default function NegotiationDialog({ open,  onOpenChange, draft, negotiation, onSuccess , userRole}: NegotiationDialogProps) {
   const { toast } = useToast();
   const [terms, setTerms] = useState<Partial<LeaseTerms>>(
-    negotiation?.proposed_terms as Partial<LeaseTerms> || draft.current_terms as Partial<LeaseTerms> || {}
+    negotiation?.proposedTerms as Partial<LeaseTerms> || draft.current_terms as Partial<LeaseTerms> || {}
   );
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,14 +37,11 @@ export default function NegotiationDialog({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No authentication token found');
-
       let endpoint, method, body;
 
       if (negotiation && isStaff) {
         // Staff responding to client negotiation
-        endpoint = `/api/negotiations/${negotiation.id}`;
+  endpoint = `/api/negotiations/${negotiation.id}`;
         method = 'PATCH';
         body = JSON.stringify({
           action: responseType,
@@ -74,8 +65,7 @@ export default function NegotiationDialog({
       const response = await fetch(endpoint, {
         method,
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body
       });
@@ -150,7 +140,7 @@ export default function NegotiationDialog({
             <div className="border rounded-lg p-4">
               <h4 className="font-medium mb-2">Current Proposal</h4>
               <pre className="text-sm bg-gray-50 p-2 rounded overflow-x-auto">
-                {JSON.stringify(negotiation.proposed_terms, null, 2)}
+                {JSON.stringify(negotiation.proposedTerms, null, 2)}
               </pre>
             </div>
           )}

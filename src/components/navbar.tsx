@@ -4,16 +4,16 @@ import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import ActionButton from "./actionButton";
 import axios from "axios";
+import Link from 'next/link';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [user, setUser] = useState(null);
+  // user object is not currently displayed; state kept minimal
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState("");
   const [loading, setLoading] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -27,36 +27,34 @@ const Navbar = () => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        if (token) {
-          const res = await axios.get('/api/auth', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          console.log("response : ", res.data);
-          setUser(res.data.authResult);
+        const res = await axios.get('/api/auth');
+        if (res.status === 200 && res.data?.authResult) {
+          // we don't store full user object separately right now
           setIsAuthenticated(true);
           setUserRole(res.data.authResult.role);
+        } else {
+          setIsAuthenticated(false);
         }
-      } catch (err) {
+      } catch {
         setIsAuthenticated(false);
       } finally {
         setLoading(false);
       }
     };
     checkAuth();
-  }, [token]);
+  }, []);
 
   const handleLogout = () => {
     setShowLogoutConfirm(true);
   };
 
-  const confirmLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
-    }
-    setUser(null);
+  const confirmLogout = async () => {
+    try {
+      await axios.post('/api/auth/logout');
+    } catch {/* ignore */}
+  // clear local user state
     setIsAuthenticated(false);
     setShowLogoutConfirm(false);
-    // Optional: Redirect to home page after logout
     window.location.href = '/';
   };
 
@@ -113,25 +111,25 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-6 lg:px-8">
         <nav className="flex items-center justify-between">
           {/* Logo */}
-          <a href="/" className="text-2xl font-bold tracking-tight text-foreground">
+          <Link href="/" className="text-2xl font-bold tracking-tight text-foreground">
             <span className="text-primary">Dream</span>Home
-          </a>
+          </Link>
 
           {/* Desktop Navigation Links */}
           <div className="hidden md:flex items-center space-x-8">
-            <a href="/properties" className="nav-link">Properties</a>
-            <a href="/about" className="nav-link">About</a>
-            <a href="/contact" className="nav-link">Contact</a>
-            <a href="/how-it-works" className="nav-link">How It Works</a>
+            <Link href="/properties" className="nav-link">Properties</Link>
+            <Link href="/about" className="nav-link">About</Link>
+            <Link href="/contact" className="nav-link">Contact</Link>
+            <Link href="/how-it-works" className="nav-link">How It Works</Link>
             {userRole === "client" && (
-              <a href="/properties/list" className="nav-link font-medium text-primary">
+              <Link href="/properties/list" className="nav-link font-medium text-primary">
                 List Your Property
-              </a>
+              </Link>
             )}
             {userRole === "manager" && (
-              <a href="/manager/properties" className="nav-link font-medium text-primary">
+              <Link href="/manager/properties" className="nav-link font-medium text-primary">
                 Listed Properties
-              </a>
+              </Link>
             )}
           </div>
 
@@ -178,27 +176,27 @@ const Navbar = () => {
         {isMenuOpen && (
           <div className="md:hidden mt-4 py-4 bg-white rounded-xl shadow-lg animate-slide-down">
             <div className="flex flex-col space-y-4 px-6">
-              <a href="/properties" className="py-2 text-foreground hover:text-primary transition-colors">
+              <Link href="/properties" className="py-2 text-foreground hover:text-primary transition-colors">
                 Properties
-              </a>
-              <a href="/about" className="py-2 text-foreground hover:text-primary transition-colors">
+              </Link>
+              <Link href="/about" className="py-2 text-foreground hover:text-primary transition-colors">
                 About
-              </a>
-              <a href="/contact" className="py-2 text-foreground hover:text-primary transition-colors">
+              </Link>
+              <Link href="/contact" className="py-2 text-foreground hover:text-primary transition-colors">
                 Contact
-              </a>
-              <a href="/how-it-works" className="py-2 text-foreground hover:text-primary transition-colors">
+              </Link>
+              <Link href="/how-it-works" className="py-2 text-foreground hover:text-primary transition-colors">
                 How It Works
-              </a>
+              </Link>
               {userRole === "client" && (
-                <a href="/properties/list" className="py-2 text-primary font-medium transition-colors">
+                <Link href="/properties/list" className="py-2 text-primary font-medium transition-colors">
                   List Your Property
-                </a>
+                </Link>
               )}
               {userRole === "manager" && (
-                <a href="/manager/properties" className="py-2 text-primary font-medium transition-colors">
+                <Link href="/manager/properties" className="py-2 text-primary font-medium transition-colors">
                   Listed Properties
-                </a>
+                </Link>
               )}
               <div className="flex flex-col space-y-3 pt-3 border-t">
                 {isAuthenticated ? (

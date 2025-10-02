@@ -13,9 +13,25 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
       include: { photos: true }
     });
+    
+    // Transform the data to match the expected format
+    const transformedProperties = properties.map(property => ({
+      id: property.id,
+      title: property.title,
+      description: property.description,
+      price: property.price,
+      address: property.address,
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      area: property.sqft,
+      type: 'House', // Default type for now until migration is complete
+      photos: property.photos.map(photo => photo.photoUrl),
+      created_at: property.createdAt
+    }));
+    
     console.log("222")
     return NextResponse.json(
-      { properties },
+      { properties: transformedProperties },
       { status: 200 }
     );
   } catch (error) {

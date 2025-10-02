@@ -1,7 +1,7 @@
 import { Card, CardHeader, CardContent, CardTitle } from "@/src/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
 import { Badge } from "@/src/components/ui/badge";
-import { FileText, MessageSquare, Check, X } from "lucide-react";
+import { FileText, MessageSquare } from "lucide-react";
 import { Button } from "@/src/components/ui/button";
 import { useState } from "react";
 import NegotiationDialog from "./negotiationDialog";

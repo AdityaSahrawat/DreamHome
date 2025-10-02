@@ -13,16 +13,35 @@ export interface Lease {
   export interface LeaseDraft {
     id: number;
     propertyId: number;
-    property_id: number; // For backward compatibility
+    property_id?: number; // backward compat
     clientId: number;
-    client_id: number; // For backward compatibility
+    client_id?: number; // backward compat
     propertyTitle: string;
     propertyAddress: string;
-    current_terms : JSON
-    status: 'draft' | 'client_review' | 'manager_review' | 'approved' | 'signed';
+    current_terms: {
+      financial?: { rent?: number; deposit?: number; payment_due_day?: number };
+      dates?: { start?: string; end?: string };
+      utilities?: { included?: string[]; not_included?: string[] };
+    } | null; // server returns current_terms; parsed client side if needed
+    status: 'draft' | 'client_accepted' | 'client_rejected' | 'approved' | 'canceled' | 'signed';
     version: number;
     clientName?: string;
     clientEmail?: string;
+  }
+
+  export interface UiNegotiation {
+    id: number;
+    draftId: number;
+    proposedTerms: unknown; // UI layer – already validated server-side
+    status: 'pending' | 'accepted' | 'rejected' | 'countered';
+    message?: string | null;
+    createdAt: Date | string;
+    clientId: number;
+    respondedAt?: Date | string | null;
+    staffResponse?: unknown;
+    responseMessage?: string | null;
+    staffId?: number | null;
+    previousNegotiationId?: number | null;
   }
 
   export interface LeaseDraftCardProps {

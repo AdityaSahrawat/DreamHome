@@ -25,13 +25,11 @@ export async function authenticateToken(req: NextRequest) {
     return NextResponse.next(); 
   }
 
-  // Try to get token from Authorization header first
-  const authHeader = req.headers.get('Authorization') || "";
-  let token = authHeader.split(' ')[1];
-
-  // If no Authorization header, try to get token from cookie
+  // Prefer HttpOnly cookie over header
+  let token = req.cookies.get('token')?.value || '';
   if (!token) {
-    token = req.cookies.get('token')?.value || '';
+    const authHeader = req.headers.get('Authorization') || "";
+    token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : '';
   }
 
   if (!token) {

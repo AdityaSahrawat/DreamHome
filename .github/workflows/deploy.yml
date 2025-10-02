@@ -1,0 +1,41 @@
+name: Deploy DreamHome to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io
+          username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+      
+      - name: Build and push docker image 
+        run: |
+          docker build -t ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest .
+          docker push ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
+
+      - name: Deploy to Azure VM via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            docker login ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io -u ${{ secrets.AZURE_REGISTRY_USERNAME }} -p ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+            
+            docker pull ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
+
+            docker stop dreamhome || true
+            docker rm dreamhome || true
+
+            docker run -d -p 80:80 --name dreamhome ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest

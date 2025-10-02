@@ -61,21 +61,10 @@ const BranchManagement: React.FC = () => {
       return;
     }
 
-    const token = localStorage.getItem('token');
-    if (!token) {
-      toast({
-        title: "Authentication Error",
-        description: "Please log in again",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
       setCreating(true);
       const response = await axios.post('/api/branches', formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });

@@ -58,7 +58,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
                 where: { id: Number(applicationId) },
                 data: {
                     status,
-                    agentId: assistantId
+                    agentId: Number(assistantId)
                 }
             });
         } else if (status === 'rejected') {
