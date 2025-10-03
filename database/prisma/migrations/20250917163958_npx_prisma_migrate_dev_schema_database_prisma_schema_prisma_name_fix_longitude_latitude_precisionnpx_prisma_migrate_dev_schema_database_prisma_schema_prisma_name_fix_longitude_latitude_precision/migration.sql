@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "public"."Property" ALTER COLUMN "latitude" SET DATA TYPE DECIMAL(12,8),
+ALTER COLUMN "longitude" SET DATA TYPE DECIMAL(12,8);
