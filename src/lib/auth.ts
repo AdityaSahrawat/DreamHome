@@ -11,6 +11,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
+  secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async session({ session, user }) {
       if (session.user && user) {
@@ -19,6 +20,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // session.user.role = user.role
       }
       return session
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id
+      }
+      return token
     },
   },
   pages: {
