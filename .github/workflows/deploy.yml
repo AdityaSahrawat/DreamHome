@@ -44,7 +44,7 @@ jobs:
             docker pull ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
             docker stop dreamhome || true
             docker rm dreamhome || true
-            docker run -d -p 3000:3000 --name dreamhome --restart=always \
+            docker run -d -p 80:3000 --name dreamhome --restart=always \
               -e NODE_ENV=production \
               -e NEXT_TELEMETRY_DISABLED=1 \
               -e DATABASE_URL="$DATABASE_URL" \
@@ -53,7 +53,7 @@ jobs:
               -e GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" \ 
               -e GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" \
               -e NEXTAUTH_SECRET="$NEXTAUTH_SECRET" \
-              -e NEXTAUTH_URL="http://$(curl -s ifconfig.me):3000" \
+              -e NEXTAUTH_URL="http://$(curl -s ifconfig.me)" \
               ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
             echo "Container started. Checking status..."
             sleep 5
