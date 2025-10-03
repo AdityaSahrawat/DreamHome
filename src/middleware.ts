@@ -22,10 +22,18 @@ export async function authenticateToken(req: NextRequest) {
     "/api/auth/manual/login",
     "/api/health",
     "/api/debug",
-    "/api/status"
+    "/api/status",
+    "/api/simple"
   ];
 
-  if (publicRoutes.includes(pathname) || pathname.startsWith("/api/auth/")) {
+  // Check if this is a public route
+  const isPublicRoute = publicRoutes.includes(pathname);
+  const isAuthRoute = pathname.startsWith("/api/auth/");
+  
+  console.log(`Middleware: ${pathname} - isPublic: ${isPublicRoute}, isAuth: ${isAuthRoute}`);
+  
+  if (isPublicRoute || isAuthRoute) {
+    console.log(`Allowing access to: ${pathname}`);
     return NextResponse.next(); 
   }
 
