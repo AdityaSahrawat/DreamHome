@@ -30,19 +30,29 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USERNAME }}
           key: ${{ secrets.VM_SSH_KEY }}
+          envs: DATABASE_URL,EMAIL_USER,EMAIL_PASS,GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,NEXTAUTH_SECRET,NEXTAUTH_URL
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
           script: |
-            # Login to Azure Container Registry
             docker login ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io -u ${{ secrets.AZURE_REGISTRY_USERNAME }} -p ${{ secrets.AZURE_REGISTRY_PASSWORD }}
-            
-            # Pull latest image
             docker pull ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
-
-            # Stop and remove existing container
             docker stop dreamhome || true
             docker rm dreamhome || true
-
-            # Run new container with all environment variables on single line
-            docker run -d -p 80:3000 --name dreamhome --restart=always -e NODE_ENV=production -e NEXT_TELEMETRY_DISABLED=1 -e DATABASE_URL="${{ secrets.DATABASE_URL }}" -e EMAIL_USER="${{ secrets.EMAIL_USER }}" -e EMAIL_PASS="${{ secrets.EMAIL_PASS }}" -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" -e NEXTAUTH_URL="${{ secrets.NEXTAUTH_URL }}" -e NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}" ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
-
-            # Show container status
-            docker ps | grep dreamhome || echo "Container check failed"
+            docker run -d -p 80:3000 --name dreamhome --restart=always \
+              -e NODE_ENV=production \
+              -e NEXT_TELEMETRY_DISABLED=1 \
+              -e DATABASE_URL="$DATABASE_URL" \
+              -e EMAIL_USER="$EMAIL_USER" \
+              -e EMAIL_PASS="$EMAIL_PASS" \
+              -e GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" \
+              -e GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" \
+              -e NEXTAUTH_SECRET="$NEXTAUTH_SECRET" \
+              -e NEXTAUTH_URL="$NEXTAUTH_URL" \
+              ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
+            docker ps | grep dreamhome
