@@ -50,7 +50,7 @@ jobs:
               -e DATABASE_URL="$DATABASE_URL" \
               -e EMAIL_USER="$EMAIL_USER" \
               -e EMAIL_PASS="$EMAIL_PASS" \
-              -e GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" \
+              -e GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" \ 
               -e GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" \
               -e NEXTAUTH_SECRET="$NEXTAUTH_SECRET" \
               -e NEXTAUTH_URL="http://$(curl -s ifconfig.me):3000" \
