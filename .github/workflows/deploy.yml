@@ -56,3 +56,6 @@ jobs:
               -e NEXTAUTH_URL="$NEXTAUTH_URL" \
               ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
             docker ps | grep dreamhome
+
+
+                          
