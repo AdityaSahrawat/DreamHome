@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
                 userId: newStaff.id,
                 role: newStaff.role 
             },
-            process.env.NEXTAUTH_SECRET || "123",
+            process.env.NEXTAUTH_SECRET!,
             { expiresIn: '24h' }
         );
 
