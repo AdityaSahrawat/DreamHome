@@ -38,4 +38,9 @@ jobs:
             docker stop dreamhome || true
             docker rm dreamhome || true
 
-            docker run -d -p 80:3000 --name dreamhome ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
+            docker run -d -p 80:3000 
+            -e DATABASE_URL= ${{secrets.DATABASE_URL}}
+            -e EMAIL_USER = ${{secrets.EMAIL_USER}}
+            -e EMAIL_PASS = ${{secrets.EMAIL_PASS}}
+            -e NEXTAUTH_SECRET = ${{secrets.NEXTAUTH_SECRET}}
+            --name dreamhome ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest

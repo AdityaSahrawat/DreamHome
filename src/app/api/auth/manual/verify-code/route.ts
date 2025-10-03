@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prismaClient } from '@/database';
 import jwt from 'jsonwebtoken';
 
-if (!process.env.NEXTAUTH_SECRET) {
-  throw new Error('NEXTAUTH_SECRET environment variable is required');
-}
-const JWT_SECRET = process.env.NEXTAUTH_SECRET;
+const JWT_SECRET = process.env.NEXTAUTH_SECRET!
 
 export async function POST(req: NextRequest) {
     try {

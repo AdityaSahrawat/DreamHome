@@ -2,15 +2,11 @@ import { NextResponse } from 'next/server';
 import { prismaClient } from '@/database';
 import jwt from 'jsonwebtoken';
 
-if (!process.env.NEXTAUTH_SECRET) {
-  throw new Error('NEXTAUTH_SECRET environment variable is required');
-}
-const JWT_SECRET = process.env.NEXTAUTH_SECRET;
+const JWT_SECRET = process.env.NEXTAUTH_SECRET || '123';
 const isProd = process.env.NODE_ENV === 'production';
 
 export async function POST(req: Request) {
     const { email, password } = await req.json();
-    console.log("req in login" , email , password)
 console.log("0")
     if (!email || !password) {
         return NextResponse.json(
@@ -18,21 +14,17 @@ console.log("0")
             { status: 400 }
         );
     }
-    console.log("1 : mail  : " , email)
     try {
         // Check the user table for any user with this email
         const user = await prismaClient.user.findUnique({
             where: { email }
         });
-        console.log("2 , " , user)
-        // If no user was found
         if (!user) {
             return NextResponse.json(
                 { message: 'Invalid credentials' },
                 { status: 401 }
             );
         }
-console.log("3")
         const isValidPassword = password === user.password;
 
         if (!isValidPassword) {
@@ -41,7 +33,6 @@ console.log("3")
                 { status: 401 }
             );
         }
-console.log("4")
         const token = jwt.sign(
             { id: user.id, role: user.role, branch_id: user.branchId },
             JWT_SECRET,
@@ -54,7 +45,7 @@ console.log("4")
             secure: isProd,
             sameSite: 'lax',
             path: '/',
-            maxAge: 60 * 60 * 24 * 7, // 7 days
+            maxAge: 60 * 60 * 24 * 7,
         });
         return res;
     } catch (error) {

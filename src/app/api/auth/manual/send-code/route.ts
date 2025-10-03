@@ -52,20 +52,16 @@ export async function POST(req: NextRequest) {
                 }
             });
         }
-        // Validate required environment variables
-        if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-            throw new Error('EMAIL_USER and EMAIL_PASS environment variables are required');
-        }
-        
+        console.log("1" , process.env.EMAIL_PASS)
         // Send email
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS,  
+                user: process.env.EMAIL_USER || 'v1codesender@gmail.com',
+                pass: process.env.EMAIL_PASS || 'welc dhux joam nyjw',  
             },
-            logger: process.env.NODE_ENV === 'development',
-            debug: process.env.NODE_ENV === 'development',
+            logger: true,
+            debug: true,
         });
 
         await transporter.sendMail({
