@@ -9,6 +9,7 @@ export async function authenticateToken(req: NextRequest) {
   const publicRoutes = [
     "/api/auth/register", 
     "/api/auth/login", 
+    "/api/auth", 
     "/api/branch", 
     "/api/properties/all",
     "/api/auth/signin",
@@ -20,7 +21,8 @@ export async function authenticateToken(req: NextRequest) {
     "/api/auth/manual/verify-code",
     "/api/auth/manual/login",
     "/api/health",
-    "/api/debug"
+    "/api/debug",
+    "/api/status"
   ];
 
   if (publicRoutes.includes(pathname) || pathname.startsWith("/api/auth/")) {
