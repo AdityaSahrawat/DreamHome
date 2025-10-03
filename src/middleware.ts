@@ -18,7 +18,9 @@ export async function authenticateToken(req: NextRequest) {
     "/api/auth/csrf",
     "/api/auth/manual/send-code",
     "/api/auth/manual/verify-code",
-    "/api/auth/manual/login"
+    "/api/auth/manual/login",
+    "/api/health",
+    "/api/debug"
   ];
 
   if (publicRoutes.includes(pathname) || pathname.startsWith("/api/auth/")) {
