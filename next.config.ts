@@ -19,6 +19,30 @@ const nextConfig: NextConfig = {
       },
     ], 
   },
+  // Fix for Server Actions with proxy/load balancer
+  experimental: {
+    serverActions: {
+      allowedOrigins: ["98.70.24.108", "98.70.24.108:80", "localhost:3000"]
+    }
+  },
+  // Handle forwarded headers correctly  
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+        ],
+      },
+    ]
+  },
 };
 
 export default nextConfig;
