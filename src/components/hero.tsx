@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import ActionButton from "./actionButton";
 
+
 const Hero = () => {
   return (
     <section className="relative w-full min-h-screen flex items-center overflow-hidden pt-24">
@@ -11,15 +12,11 @@ const Hero = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-indigo-800/90 mix-blend-multiply" />
         <div className="absolute inset-0">
           <Image
-            src="/uploads/photo-1758128217399-546587612.webp"
+            src="/uploads/dreamhome_hero.avif"
             alt="Modern building"
             fill
             priority
             className="object-cover"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.src = "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80";
-            }}
           />
         </div>
       </div>
