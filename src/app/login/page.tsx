@@ -1,6 +1,6 @@
 "use client"
 
-import axios from 'axios';
+import axios from '@/src/lib/axios';
 // pages/login.tsx
 import Head from 'next/head';
 import Link from 'next/link';
@@ -22,16 +22,24 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const response = await axios.post("/api/auth/login", { email, password });
-      if (response.status === 200 && response.data.success) {
-        // Cookie is set HttpOnly by server; just redirect
+      const response = await axios.post("/api/auth/manual/login", { email, password });
+      if (response.status === 200 && response.data.token) {
+        // Store token in localStorage for authorization headers
+        localStorage.setItem('token', response.data.token);
+        // Cookie is also set HttpOnly by server
+        
+        // Dispatch a custom event to notify navbar of successful login
+        window.dispatchEvent(new CustomEvent('authStateChanged'));
+        
+        // Redirect to home page
         router.push("/");
       } else {
         setError('Invalid login response');
       }
     } catch (err) {
-      if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || 'Login failed');
+      if (err instanceof Error && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        setError(axiosError.response?.data?.message || 'Login failed');
       } else {
         setError('Unexpected error');
       }

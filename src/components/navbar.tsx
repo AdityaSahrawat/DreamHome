@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import ActionButton from "./actionButton";
-import axios from "axios";
+import axios from "@/src/lib/axios";
 import Link from 'next/link';
 
 const Navbar = () => {
@@ -24,24 +24,39 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await axios.get('/api/auth');
-        if (res.status === 200 && res.data?.authResult) {
-          // we don't store full user object separately right now
-          setIsAuthenticated(true);
-          setUserRole(res.data.authResult.role);
-        } else {
-          setIsAuthenticated(false);
-        }
-      } catch {
+  const checkAuth = async () => {
+    try {
+      console.log("sending to /api/auth")
+      // axios instance already configured with withCredentials
+      const res = await axios.get('/api/auth');
+      console.log("Auth response:", res.data.authResult)
+      if (res.status === 200 && res.data?.authResult) {
+        setIsAuthenticated(true);
+        setUserRole(res.data.authResult.role);
+      } else {
         setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      setIsAuthenticated(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     checkAuth();
+    
+    // Listen for auth state changes (e.g., after login)
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+    
+    window.addEventListener('authStateChanged', handleAuthChange);
+    
+    return () => {
+      window.removeEventListener('authStateChanged', handleAuthChange);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -50,10 +65,14 @@ const Navbar = () => {
 
   const confirmLogout = async () => {
     try {
+      // axios instance already configured with withCredentials
       await axios.post('/api/auth/logout');
-    } catch {/* ignore */}
-  // clear local user state
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+    // clear local user state
     setIsAuthenticated(false);
+    setUserRole("");
     setShowLogoutConfirm(false);
     window.location.href = '/';
   };
