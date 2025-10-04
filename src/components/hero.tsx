@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 import ActionButton from "./actionButton";
 
+
 const Hero = () => {
   return (
     <section className="relative w-full min-h-screen flex items-center overflow-hidden pt-24">
@@ -11,7 +12,7 @@ const Hero = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-indigo-800/90 mix-blend-multiply" />
         <div className="absolute inset-0">
           <Image
-            src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2070&q=80"
+            src="/uploads/dreamhome_hero.avif"
             alt="Modern building"
             fill
             priority
@@ -23,7 +24,7 @@ const Hero = () => {
       <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full">
         <div className="flex flex-col items-center text-center">
           <span className="inline-block px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium mb-8 animate-fade-in">
-            Discover Your Perfect Living Space
+            Discover Your Perfect Living Space (test)
           </span>
 
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white tracking-tight leading-tight max-w-4xl animate-slide-up" style={{ animationDelay: "0.1s" }}>

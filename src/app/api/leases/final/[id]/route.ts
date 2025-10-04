@@ -9,24 +9,28 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const { action } = await req.json(); // 'accept' or 'reject'
-    const draft_id = params.id;
+  const { action } = await req.json(); // 'accept' or 'reject'
+  const draftId = Number(params.id);
 
     // 1. Verify draft is in approved state
 
     const draft = await prismaClient.leaseDraft.findFirst({
-      where: {
-        id: Number(draft_id),
-        status: 'approved'
-      },
-      include: { property: true }
+      where: { id: draftId },
+      include: { property: true, lease: true }
     });
 
 
-    if (!draft) {
+    if (!draft || draft.status !== 'approved') {
       return NextResponse.json(
         { message: 'Draft not found or not approved' },
         { status: 404 }
+      );
+    }
+
+    if (draft.lease) {
+      return NextResponse.json(
+        { message: 'Lease already finalized for this draft' },
+        { status: 409 }
       );
     }
 
@@ -64,11 +68,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       });
 
       return NextResponse.json({
-        lease_id: lease.id,
-        start_date: terms.dates.start
+        leaseId: lease.id,
+        startDate: terms.dates.start,
+        draftStatus: 'signed'
       });
 
-    } else { // Rejection
+    } else if (action === 'reject') { // Rejection
       await prismaClient.leaseDraft.update({
         where: { id: draft.id },
         data: { status: 'client_review' }
@@ -76,6 +81,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ 
         message: 'Lease terms rejected' 
       });
+    } else {
+      return NextResponse.json({ message: 'Invalid action' }, { status: 400 });
     }
 
   } catch (error) {

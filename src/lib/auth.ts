@@ -11,14 +11,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
+  secret: process.env.NEXTAUTH_SECRET,
+  trustHost: true,
   callbacks: {
-    async session({ session, user }) {
-      if (session.user && user) {
-        session.user.id = user.id
-        // You can add role mapping here if needed
-        // session.user.role = user.role
+    async session({ session, user, token }) {
+      try {
+        if (session.user) {
+          if (user) {
+            session.user.id = user.id
+          } else if (token) {
+            session.user.id = token.id as string
+          }
+        }
+        return session
+      } catch (error) {
+        console.error('Session callback error:', error)
+        return session
       }
-      return session
+    },
+    async jwt({ token, user }) {
+      try {
+        if (user) {
+          token.id = user.id
+        }
+        return token
+      } catch (error) {
+        console.error('JWT callback error:', error)
+        return token
+      }
     },
   },
   pages: {
@@ -27,6 +47,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   session: {
     strategy: 'database',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   debug: process.env.NODE_ENV === 'development',
 })

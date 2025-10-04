@@ -52,14 +52,16 @@ export async function POST(req: NextRequest) {
                 }
             });
         }
-
+        console.log("1" , process.env.EMAIL_PASS)
         // Send email
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: process.env.EMAIL_USER || 'v1codesender@gmail.com',
-                pass: process.env.EMAIL_PASS || 'welc dhux joam nyjw',
+                pass: process.env.EMAIL_PASS || 'welc dhux joam nyjw',  
             },
+            logger: true,
+            debug: true,
         });
 
         await transporter.sendMail({

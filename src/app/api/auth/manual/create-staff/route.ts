@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
                 name,
                 password, // Plain text for now
                 role: role as "manager" | "supervisor" | "assistant",
-                branchId: branchId ? parseInt(branchId) : null
+                branchId: branchId ? parseInt(branchId) : null,
+                emailVerified: new Date() // Mark as verified since no email auth
             },
             include: {
                 branch: true

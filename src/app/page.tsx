@@ -43,11 +43,9 @@ const Index = () => {
             <span className="inline-block px-4 py-2 rounded-full bg-blue-50 text-primary text-sm font-medium mb-4">
               Get Started
             </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Your Path to the Perfect Home
-            </h2>
+            {/* Tagline removed per redesign request */}
             <p className="text-lg text-muted-foreground max-w-2xl">
-              Whether you're looking to rent, buy, or manage properties, we've made the process simple and stress-free.
+              Whether you&apos;re looking to rent, buy, or manage properties, explore opportunities with a streamlined experience.
             </p>
           </div>
 
@@ -114,7 +112,7 @@ const Index = () => {
               Why Choose DreamHome?
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              We've reimagined the rental experience with these key benefits
+              We&apos;ve reimagined the rental experience with these key benefits
             </p>
           </div>
 
@@ -203,7 +201,7 @@ const Index = () => {
               What Our Customers Say
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl">
-              Don't just take our word for it – here's what our satisfied customers have to say
+              Don&apos;t just take our word for it – here&apos;s what our satisfied customers have to say
             </p>
           </div>
 

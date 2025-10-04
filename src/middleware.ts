@@ -67,27 +67,16 @@ export async function authenticateToken(req: NextRequest) {
   }
 }
 
-export function authorizeRole(roles: string[]) {
-  return async function (req: NextRequest) {
-    const user = await authenticateToken(req);
-
-    if (user instanceof NextResponse) {
-        return user;
-    }
-    
-    if (!roles.includes(user.role)) {
-        return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 });
-    }
-    
-    return user; 
-  };
-}
-
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   
+  console.log('=== MIDDLEWARE DEBUG ===');
+  console.log('Pathname:', pathname);
+  console.log('Method:', req.method);
+  
   // Allow NextAuth routes to pass through
   if (pathname.startsWith("/api/auth/")) {
+    console.log('✅ Allowing NextAuth route:', pathname);
     return NextResponse.next();
   }
   
@@ -96,43 +85,53 @@ export async function middleware(req: NextRequest) {
     "/api/auth/login", 
     "/api/branch", 
     "/api/properties/all",
-    "/api/branches" // Allow GET access to branches for public viewing
+    "/api/branches", // Allow GET access to branches for public viewing
+    "/api/auth/manual/login",
+    "/api/auth/manual/send-code",
+    "/api/auth/manual/verify-code"
   ];
   
   // Allow GET requests to branches (viewing), but protect POST (creation)
   if (pathname === "/api/branches" && req.method === "GET") {
+    console.log('✅ Allowing GET to branches');
+    return NextResponse.next();
+  }
+  
+  // Allow access to view all properties publicly
+  if (pathname === "/api/properties/all" && req.method === "GET") {
+    console.log('✅ Allowing GET to properties/all');
+    return NextResponse.next();
+  }
+  
+  // Allow access to individual property details publicly  
+  if (pathname.match(/^\/api\/properties\/\d+$/) && req.method === "GET") {
+    console.log('✅ Allowing GET to individual property');
     return NextResponse.next();
   }
   
   if (publicRoutes.includes(pathname)) {
+    console.log('✅ Allowing public route:', pathname);
     return NextResponse.next();
   }
 
-  const authResult = await authenticateToken(req);
-  if (authResult instanceof NextResponse) {
-    return authResult; 
+  console.log('🔒 Checking authentication for:', pathname);
+
+  // Check for authentication token
+  let token = req.cookies.get('token')?.value || '';
+  if (!token) {
+    const authHeader = req.headers.get('Authorization') || "";
+    token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : '';
   }
 
-  const roleBasedRoutes: { [key: string]: string[] } = {
-    "/api/notification": ["client", "manager", "owner" ,"assistant"],
-    "/api/client": ["client"],
-    "/api/properties": ["client", "manager" ,"assistant"],
-    "/api/profile": ["client", "manager", "assistant", "owner"],
-  };
-
-  for (const route in roleBasedRoutes) {
-    if (pathname.startsWith(route)) {
-      const authResponse = await authorizeRole(roleBasedRoutes[route])(req);
-      if (authResponse instanceof NextResponse) {
-        return authResponse;
-      }
-    }
+  if (!token) {
+    console.log('❌ No token found for:', pathname);
+    return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
   }
 
+  console.log('✅ Token found, allowing:', pathname);
   return NextResponse.next();
 }
 
-// Apply Middleware to API Routes
 export const config = {
-  matcher: "/api/:path*",
+  matcher: ['/api/:path*']
 };

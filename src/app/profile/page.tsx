@@ -2,11 +2,10 @@
 "use client"
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Card, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
-import { UserCircle, PlusIcon } from "lucide-react";
+import { UserCircle } from "lucide-react";
 import Navbar from "@/src/components/navbar";
 import { useToast } from "@/src/components/hook/use-toast";
 import UserInfoCard from "./userInfo";
@@ -79,11 +78,6 @@ const DashboardPage = () => {
 
   const handlePropertyStatus = async (propertyId: string, status: 'approved'|'rejected', assistantId?: string) => {
     console.log(propertyId , assistantId , status)
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
 
     if (status === 'approved' && !assistantId) {
       toast({
@@ -105,7 +99,6 @@ const DashboardPage = () => {
 
   const confirmAction = async () => {
     const { action, propertyId, assistantId } = confirmationDialog;
-    const token = localStorage.getItem('token');
     
     try {
       setConfirmationDialog(prev => ({ ...prev, open: false }));
@@ -114,10 +107,6 @@ const DashboardPage = () => {
       await axios.post(`/api/properties/add/${propertyId}`, {
         status: action,
         assistantId
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
       });
       
       
@@ -138,50 +127,27 @@ const DashboardPage = () => {
     }
   };
 
-  const fetchProfileData = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
+  const fetchProfileData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/profile', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type' : 'application/json'
-        }
-      });
+      const response = await axios.get('/api/profile');
       console.log(response)
       setProfileData(response.data);
     } catch (err) {
       setError('Failed to fetch profile data');
       console.error(err);
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
-        localStorage.removeItem('token');
-        router.push('/login');
-      }
+      if (axios.isAxiosError(err) && err.response?.status === 401) router.push('/login');
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   const handleScheduleStatusChange = async (requestId: string, status: 'approved'|'rejected') => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
     console.log(requestId)
     try {
       await axios.put('/api/leases/schedule', {
         requestId ,
         status
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
       });
   
       fetchProfileData();
@@ -202,19 +168,9 @@ const DashboardPage = () => {
   };
 
   const handleStaffApplicationStatusChange = async (applicationId: string, status: 'approved'|'rejected') => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-  
     try {
       await axios.post(`/api/auth/register/staff/${applicationId}`, {
         status
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
       });
   
       fetchProfileData();
@@ -235,7 +191,7 @@ const DashboardPage = () => {
   };
   useEffect(() => {
     fetchProfileData();
-  }, [router, refreshKey]);
+  }, [fetchProfileData, refreshKey]);
   
   // Add this function
   const handleRefresh = () => {
@@ -244,7 +200,7 @@ const DashboardPage = () => {
 
   useEffect(() => {
     fetchProfileData();
-  }, [router]);
+  }, [fetchProfileData]);
 
   if (loading) {
     return (
@@ -319,33 +275,12 @@ const DashboardPage = () => {
         )}
 
         {profileData.user.role === "assistant" && (
-          <>
-          
-            <Card className="mb-4">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold flex items-center justify-between">
-                  <span>Lease Management</span>
-                  <Button onClick={() => setCreateLeaseDialogOpen(true)}>
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Create New Lease
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-            </Card>
-
-
-            <LeaseDraftsCard 
-            //@ts-ignore
-              drafts={profileData.leaseDrafts} 
-              isStaff={['assistant'].includes(profileData.user.role)}
-              onUpdate={handleRefresh}
-            />
-
-          </>
-
-          
-          
-          
+          <LeaseDraftsCard 
+            // @ts-expect-error backend shape differs; future: align types
+            drafts={profileData.leaseDrafts} 
+            isStaff={['assistant'].includes(profileData.user.role)}
+            onUpdate={handleRefresh}
+          />
         )}
 
         <ConfirmationDialog 

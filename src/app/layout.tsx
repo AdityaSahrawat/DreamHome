@@ -16,6 +16,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "DreamHome",
   description: "Your dream home awaits",
+  icons: {
+    icon: '/house-icon.svg',
+    shortcut: '/house-icon.svg',
+    apple: '/house-icon.svg',
+  },
 };
 
 export default function RootLayout({

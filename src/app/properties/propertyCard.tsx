@@ -25,9 +25,9 @@ interface PropertyCardProps {
 
 export const PropertyCard = ({ property, formatPrice }: PropertyCardProps) => {
   const router = useRouter()
-  const mainPhoto = property.photos.length > 0 
-    ? `${property.photos[0]}` 
-    : '/placeholder-property.jpg';
+  const mainPhoto = property.photos && property.photos.length > 0 
+    ? property.photos[0]
+    : 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80';
 
   return (
     <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg">

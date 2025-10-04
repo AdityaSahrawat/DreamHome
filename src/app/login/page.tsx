@@ -1,6 +1,6 @@
 "use client"
 
-import axios from 'axios';
+import axios from '@/src/lib/axios';
 // pages/login.tsx
 import Head from 'next/head';
 import Link from 'next/link';
@@ -14,12 +14,38 @@ export default function Login() {
   const [userType, setUserType] = useState('client');
   const router = useRouter();
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const response = await axios.post("/api/auth/login" , {email , password});
-    const token = response.data.token 
-    window.localStorage.setItem("token" , token)
-    router.push("/")
+    setError(null);
+    setLoading(true);
+    try {
+      const response = await axios.post("/api/auth/manual/login", { email, password });
+      if (response.status === 200 && response.data.token) {
+        // Store token in localStorage for authorization headers
+        localStorage.setItem('token', response.data.token);
+        // Cookie is also set HttpOnly by server
+        
+        // Dispatch a custom event to notify navbar of successful login
+        window.dispatchEvent(new CustomEvent('authStateChanged'));
+        
+        // Redirect to home page
+        router.push("/");
+      } else {
+        setError('Invalid login response');
+      }
+    } catch (err) {
+      if (err instanceof Error && 'response' in err) {
+        const axiosError = err as { response?: { data?: { message?: string } } };
+        setError(axiosError.response?.data?.message || 'Login failed');
+      } else {
+        setError('Unexpected error');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,11 +158,15 @@ export default function Login() {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70"
               >
-                Sign in
+                {loading ? 'Signing in...' : 'Sign in'}
               </button>
             </div>
+            {error && (
+              <p className="text-sm text-red-600 text-center">{error}</p>
+            )}
           </form>
 
           <div className="mt-6">
