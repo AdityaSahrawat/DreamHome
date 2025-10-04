@@ -24,7 +24,7 @@ const Hero = () => {
       <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full">
         <div className="flex flex-col items-center text-center">
           <span className="inline-block px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm font-medium mb-8 animate-fade-in">
-            Discover Your Perfect Living Space
+            Discover Your Perfect Living Space (test)
           </span>
 
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white tracking-tight leading-tight max-w-4xl animate-slide-up" style={{ animationDelay: "0.1s" }}>
