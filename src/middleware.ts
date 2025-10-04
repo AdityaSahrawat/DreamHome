@@ -104,8 +104,21 @@ export async function middleware(req: NextRequest) {
   const publicRoutes = [
     "/api/auth/register", 
     "/api/auth/login", 
+    "/api/auth", 
     "/api/branch", 
     "/api/properties/all",
+    "/api/auth/signin",
+    "/api/auth/callback",
+    "/api/auth/session",
+    "/api/auth/providers",
+    "/api/auth/csrf",
+    "/api/auth/manual/send-code",
+    "/api/auth/manual/verify-code",
+    "/api/auth/manual/login",
+    "/api/health",
+    "/api/debug",
+    "/api/status",
+    "/api/simple",
     "/api/branches" // Allow GET access to branches for public viewing
   ];
   
