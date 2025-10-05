@@ -124,7 +124,7 @@ const Index = () => {
         year_built: formData.year_built ? parseInt(formData.year_built) : null
       };
       const token = localStorage.getItem("token")
-      console.log(token)
+  // Removed debug log: token
       const propertyResponse = await axios.post('/api/properties/apply', propertyData, {
         headers: {
           Authorization : `Bearer ${token}`,
@@ -140,7 +140,7 @@ const Index = () => {
           files.forEach((file) => {
             formDataImages.append('photos', file); 
           });
-          console.log("token : " , token)
+          // Removed debug log: token
           const imagesResponse = await axios.post(`/api/properties/${propertyId}/photos`, formDataImages, {
             headers: {
               Authorization: `Bearer ${token}`
@@ -167,7 +167,7 @@ const Index = () => {
         alert('Failed to list property. Please try again.');
       }
     } catch (error) {
-      console.log(error)
+  // Removed debug log: error
       alert('An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);

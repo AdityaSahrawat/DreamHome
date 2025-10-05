@@ -2,17 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prismaClient } from '@/database';
 import { authenticateToken } from '@/src/middleware';
 
+type AuthUser = { id: number; role: string; branch_id?: number | null; email?: string };
+const err = (status: number, message: string) => NextResponse.json({ message }, { status });
+
 
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await authenticateToken(req);
-  if (auth instanceof NextResponse) return auth;
+  const authResult = await authenticateToken(req);
+  if (authResult instanceof NextResponse) return authResult;
+  const auth = authResult as AuthUser | null;
+  if (!auth) return err(401, 'Authentication required');
+  const user = auth as AuthUser; // non-null assertion for TS flow
 
   try {
-  const { action } = await req.json(); // 'accept' or 'reject'
+  let body: { action?: string };
+  try { body = await req.json(); } catch { return err(400, 'Invalid JSON body'); }
+  const { action } = body;
+  if (!action) return err(400, 'action required');
   const draftId = Number(params.id);
+  if (Number.isNaN(draftId)) return err(400, 'Invalid draft id');
 
-    // 1. Verify draft is in approved state
 
     const draft = await prismaClient.leaseDraft.findFirst({
       where: { id: draftId },
@@ -20,25 +29,18 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     });
 
 
-    if (!draft || draft.status !== 'approved') {
-      return NextResponse.json(
-        { message: 'Draft not found or not approved' },
-        { status: 404 }
-      );
-    }
+    if (!draft) return err(404, 'Draft not found');
+    if (draft.status !== 'approved') return err(409, 'Draft not in approved state');
 
-    if (draft.lease) {
-      return NextResponse.json(
-        { message: 'Lease already finalized for this draft' },
-        { status: 409 }
-      );
-    }
+    if (draft.lease) return err(409, 'Lease already finalized for this draft');
 
 
     // 2. Type-safe terms parsing
-    const terms = typeof draft.currentTerms === 'string'
+    const termsRaw = typeof draft.currentTerms === 'string'
       ? JSON.parse(draft.currentTerms)
       : draft.currentTerms;
+    const terms = termsRaw as { dates?: { start?: string } };
+    if (!terms?.dates?.start) return err(400, 'Invalid terms missing start date');
 
 
     if (action === 'accept') {
@@ -46,10 +48,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const lease = await prismaClient.lease.create({
         data: {
           draftId: draft.id,
-          finalTerms: terms,
-          signedByClient: auth.role === 'client',
-          signedByAgent: auth.role === 'assistant',
-          activeFrom: new Date(terms.dates.start)
+          finalTerms: termsRaw as object,
+          signedByClient: user.role === 'client',
+          signedByAgent: user.role === 'assistant' || user.role === 'manager',
+          activeFrom: new Date(terms.dates.start as string)
         }
       });
 
@@ -73,23 +75,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         draftStatus: 'signed'
       });
 
-    } else if (action === 'reject') { // Rejection
+    } else if (action === 'reject') {
+      // rollback to manager review path so assistant can adjust if needed
       await prismaClient.leaseDraft.update({
         where: { id: draft.id },
-        data: { status: 'client_review' }
+        data: { status: 'manager_review' }
       });
-      return NextResponse.json({ 
-        message: 'Lease terms rejected' 
-      });
+      return NextResponse.json({ message: 'Lease terms rejected' });
     } else {
-      return NextResponse.json({ message: 'Invalid action' }, { status: 400 });
+      return err(400, 'Invalid action');
     }
 
-  } catch (error) {
-    console.error('Finalization error:', error);
-    return NextResponse.json(
-      { message: 'Failed to finalize lease' },
-      { status: 500 }
-    );
+  } catch (e) {
+    console.error('Finalization error:', e);
+    return err(500, 'Failed to finalize lease');
   }
 }

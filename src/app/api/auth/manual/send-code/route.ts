@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
                 }
             });
         }
-        console.log("1" , process.env.EMAIL_PASS)
+    // Removed debug log: EMAIL_PASS exposure prevention
         // Send email
         const transporter = nodemailer.createTransport({
             service: 'gmail',

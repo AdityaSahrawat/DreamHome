@@ -52,7 +52,6 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Manual JWT fallback
     const bearer = req.headers.get('Authorization');
     const rawToken = bearer?.startsWith('Bearer ') ? bearer.split(' ')[1] : (req.cookies.get('token')?.value || undefined);
     const manual = verifyManualToken(rawToken);

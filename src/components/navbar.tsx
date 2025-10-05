@@ -1,243 +1,110 @@
 "use client"
 
-import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
-import ActionButton from "./actionButton";
-import axios from "@/src/lib/axios";
-import { signOut } from 'next-auth/react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import axios from '@/src/lib/axios';
+import ActionButton from './actionButton';
+import { signOut } from 'next-auth/react';
+import { Menu, X } from 'lucide-react';
 
+// Minimal, no scroll effects, no modal, no caching.
 const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  // user object is not currently displayed; state kept minimal
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authed, setAuthed] = useState(false);
+  const [role, setRole] = useState('');
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    (async () => {
+      try {
+        const res = await axios.get('/api/auth/status');
+        if (res.data?.authenticated) {
+          setAuthed(true);
+          setRole(res.data.user?.role || '');
+        } else {
+          setAuthed(false);
+        }
+      } catch {
+        setAuthed(false);
+      } finally {
+        setAuthLoading(false);
+      }
+    })();
   }, []);
 
-  const checkAuth = async () => {
+  const logout = async () => {
     try {
-      const res = await axios.get('/api/auth/status');
-      if (res.data?.authenticated) {
-        setIsAuthenticated(true);
-        setUserRole(res.data.user?.role || '');
-      } else setIsAuthenticated(false);
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      setIsAuthenticated(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    checkAuth();
-    
-    // Listen for auth state changes (e.g., after login)
-    const handleAuthChange = () => {
-      checkAuth();
-    };
-    
-    window.addEventListener('authStateChanged', handleAuthChange);
-    
-    return () => {
-      window.removeEventListener('authStateChanged', handleAuthChange);
-    };
-  }, []);
-
-  const handleLogout = () => {
-    setShowLogoutConfirm(true);
-  };
-
-  const confirmLogout = async () => {
-    try {
-      await axios.post('/api/auth/logout'); // manual token clear
-      await signOut({ redirect: false }); // next-auth session clear
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-    // clear local user state
-    setIsAuthenticated(false);
-    setUserRole("");
-    setShowLogoutConfirm(false);
-    window.dispatchEvent(new CustomEvent('authStateChanged'));
+      await axios.post('/api/auth/logout');
+      await signOut({ redirect: false });
+    } catch {}
+    setAuthed(false);
+    setRole('');
     window.location.href = '/';
   };
 
-  const cancelLogout = () => {
-    setShowLogoutConfirm(false);
-  };
-
-  if (loading) {
-    return (
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md shadow-sm py-4">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <nav className="flex items-center justify-between">
-            <div className="text-2xl font-bold tracking-tight text-foreground">
-              <span className="text-primary">Dream</span>Home
-            </div>
-          </nav>
-        </div>
-      </header>
-    );
-  }
-
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? "bg-white/80 backdrop-blur-md shadow-sm py-4"
-          : "bg-transparent py-6"
-      }`}
-    >
-      {/* Logout Confirmation Modal */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-medium mb-4">Confirm Logout</h3>
-            <p className="mb-6">Are you sure you want to log out?</p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={cancelLogout}
-                className="px-4 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmLogout}
-                className="px-4 py-2 text-sm rounded-md bg-primary text-white hover:bg-primary/90"
-              >
-                Log Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <nav className="flex items-center justify-between">
+    <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        <nav className="flex items-center justify-between w-full">
           {/* Logo */}
-          <Link href="/" className="text-2xl font-bold tracking-tight text-foreground">
-            <span className="text-primary">Dream</span>Home
+          <Link href="/" className="text-lg font-semibold">
+            Dream<span className="text-primary">Home</span>
           </Link>
 
           {/* Desktop Navigation Links */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href="/properties" className="nav-link">Properties</Link>
-            <Link href="/about" className="nav-link">About</Link>
-            <Link href="/contact" className="nav-link">Contact</Link>
-            <Link href="/how-it-works" className="nav-link">How It Works</Link>
-            {userRole === "client" && (
-              <Link href="/properties/list" className="nav-link font-medium text-primary">
-                List Your Property
-              </Link>
-            )}
-            {userRole === "manager" && (
-              <Link href="/manager/properties" className="nav-link font-medium text-primary">
-                Listed Properties
-              </Link>
-            )}
+          <div className="hidden md:flex items-center gap-6 text-sm">
+            <Link href="/properties" className="hover:text-primary">Properties</Link>
+            <Link href="/about" className="hover:text-primary">About</Link>
+            <Link href="/contact" className="hover:text-primary">Contact</Link>
+            <Link href="/how-it-works" className="hover:text-primary">How It Works</Link>
+            {role === 'client' && <Link href="/properties/list" className="text-primary font-medium">List</Link>}
+            {role === 'manager' && <Link href="/manager/properties" className="text-primary font-medium">Manage</Link>}
           </div>
 
           {/* Authentication Buttons / Profile */}
-          <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated ? (
+          <div className="hidden md:flex items-center gap-3 text-sm">
+            {authLoading ? (
+              <span className="text-xs text-gray-400">…</span>
+            ) : authed ? (
               <>
-                <ActionButton variant="outline" href="/profile" size="sm">
-                  Profile
-                </ActionButton>
-                <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-50"
-                >
-                  Logout
-                </button>
+                <ActionButton variant="outline" href="/profile" size="sm">Profile</ActionButton>
+                <button onClick={logout} className="px-3 py-1 border rounded hover:bg-gray-50">Logout</button>
               </>
             ) : (
               <>
-                <ActionButton variant="outline" href="/login" size="sm">
-                  Sign In
-                </ActionButton>
-                <ActionButton href="/register" size="sm">
-                  Register
-                </ActionButton>
+                <ActionButton variant="outline" href="/login" size="sm">Login</ActionButton>
+                <ActionButton href="/register" size="sm">Register</ActionButton>
               </>
             )}
           </div>
 
           {/* Mobile Menu Button */}
-          <button
-            className="md:hidden focus:outline-none"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? (
-              <X className="h-6 w-6 text-foreground" />
-            ) : (
-              <Menu className="h-6 w-6 text-foreground" />
-            )}
+          <button className="md:hidden" onClick={() => setOpen(o => !o)}>
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </nav>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden mt-4 py-4 bg-white rounded-xl shadow-lg animate-slide-down">
-            <div className="flex flex-col space-y-4 px-6">
-              <Link href="/properties" className="py-2 text-foreground hover:text-primary transition-colors">
-                Properties
-              </Link>
-              <Link href="/about" className="py-2 text-foreground hover:text-primary transition-colors">
-                About
-              </Link>
-              <Link href="/contact" className="py-2 text-foreground hover:text-primary transition-colors">
-                Contact
-              </Link>
-              <Link href="/how-it-works" className="py-2 text-foreground hover:text-primary transition-colors">
-                How It Works
-              </Link>
-              {userRole === "client" && (
-                <Link href="/properties/list" className="py-2 text-primary font-medium transition-colors">
-                  List Your Property
-                </Link>
+        {open && (
+          <div className="md:hidden absolute top-14 left-0 right-0 bg-white border-b px-4 pb-4 flex flex-col gap-2 text-sm">
+            <Link href="/properties" onClick={() => setOpen(false)} className="py-1">Properties</Link>
+            <Link href="/about" onClick={() => setOpen(false)} className="py-1">About</Link>
+            <Link href="/contact" onClick={() => setOpen(false)} className="py-1">Contact</Link>
+            <Link href="/how-it-works" onClick={() => setOpen(false)} className="py-1">How It Works</Link>
+            {role === 'client' && <Link href="/properties/list" onClick={() => setOpen(false)} className="py-1">List Property</Link>}
+            {role === 'manager' && <Link href="/manager/properties" onClick={() => setOpen(false)} className="py-1">Manage</Link>}
+            <div className="pt-2 border-t flex flex-col gap-2">
+              {authLoading ? (
+                <span className="text-xs text-gray-400">…</span>
+              ) : authed ? (
+                <>
+                  <ActionButton variant="outline" href="/profile" size="sm">Profile</ActionButton>
+                  <button onClick={logout} className="px-3 py-1 border rounded text-left">Logout</button>
+                </>
+              ) : (
+                <>
+                  <ActionButton variant="outline" href="/login" size="sm">Login</ActionButton>
+                  <ActionButton href="/register" size="sm">Register</ActionButton>
+                </>
               )}
-              {userRole === "manager" && (
-                <Link href="/manager/properties" className="py-2 text-primary font-medium transition-colors">
-                  Listed Properties
-                </Link>
-              )}
-              <div className="flex flex-col space-y-3 pt-3 border-t">
-                {isAuthenticated ? (
-                  <>
-                    <ActionButton variant="outline" href="/profile">
-                      Profile
-                    </ActionButton>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full py-2 px-4 text-left text-foreground hover:text-primary transition-colors"
-                    >
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <ActionButton variant="outline" href="/login">
-                      Sign In
-                    </ActionButton>
-                    <ActionButton href="/register">
-                      Register
-                    </ActionButton>
-                  </>
-                )}
-              </div>
             </div>
           </div>
         )}

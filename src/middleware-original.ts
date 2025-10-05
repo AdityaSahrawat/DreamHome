@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
 
-  console.log(`🔍 Middleware processing: ${pathname}`);
+  // Debug log removed
 
   // Define public routes that should NOT require authentication
   const publicRoutes = [
@@ -21,23 +21,23 @@ export async function middleware(req: NextRequest) {
 
   // Allow all NextAuth routes
   if (pathname.startsWith("/api/auth/")) {
-    console.log(`✅ Allowing NextAuth route: ${pathname}`);
+  // Allowing NextAuth route
     return NextResponse.next();
   }
 
   // Allow specific public routes
   if (publicRoutes.includes(pathname)) {
-    console.log(`✅ Allowing public route: ${pathname}`);
+  // Allowing public route
     return NextResponse.next();
   }
 
   // Allow GET requests to branches
   if (pathname === "/api/branches" && req.method === "GET") {
-    console.log(`✅ Allowing GET to branches: ${pathname}`);
+  // Allowing GET to branches
     return NextResponse.next();
   }
 
-  console.log(`🔒 Checking authentication for: ${pathname}`);
+  // Checking authentication
 
   // Check for authentication token
   let token = req.cookies.get('token')?.value || '';
@@ -47,11 +47,11 @@ export async function middleware(req: NextRequest) {
   }
 
   if (!token) {
-    console.log(`❌ No token found for: ${pathname}`);
+  // No token found for this route
     return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
   }
 
-  console.log(`✅ Token found, allowing: ${pathname}`);
+  // Token found, allowing
   return NextResponse.next();
 }
 

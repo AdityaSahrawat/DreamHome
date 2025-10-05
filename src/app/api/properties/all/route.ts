@@ -4,10 +4,10 @@ import { prismaClient } from '@/database';
 
 export async function GET() {
   try {
-    console.log("000")
+  // Removed debug log marker
     // const authResult = await authenticateToken(request);
     // if (authResult instanceof NextResponse) return authResult;
-    console.log("111")
+  // Removed debug log marker
     const properties = await prismaClient.property.findMany({
       where: { status: 'approved' },
       orderBy: { createdAt: 'desc' },
@@ -29,7 +29,7 @@ export async function GET() {
       created_at: property.createdAt
     }));
     
-    console.log("222")
+  // Removed debug log marker
     return NextResponse.json(
       { properties: transformedProperties },
       { status: 200 }

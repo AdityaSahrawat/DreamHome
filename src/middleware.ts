@@ -76,13 +76,11 @@ export async function authenticateToken(req: NextRequest) {
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   
-  console.log('=== MIDDLEWARE DEBUG ===');
-  console.log('Pathname:', pathname);
-  console.log('Method:', req.method);
+  // Debug logs removed for production performance.
   
   // Allow NextAuth routes to pass through
   if (pathname.startsWith("/api/auth/")) {
-    console.log('✅ Allowing NextAuth route:', pathname);
+  // Allowing NextAuth route
     return NextResponse.next();
   }
   
@@ -101,28 +99,28 @@ export async function middleware(req: NextRequest) {
   
   // Allow GET requests to branches (viewing), but protect POST (creation)
   if (pathname === "/api/branches" && req.method === "GET") {
-    console.log('✅ Allowing GET to branches');
+  // Allow GET to branches
     return NextResponse.next();
   }
   
   // Allow access to view all properties publicly
   if (pathname === "/api/properties/all" && req.method === "GET") {
-    console.log('✅ Allowing GET to properties/all');
+  // Allow GET to properties/all
     return NextResponse.next();
   }
   
   // Allow access to individual property details publicly  
   if (pathname.match(/^\/api\/properties\/\d+$/) && req.method === "GET") {
-    console.log('✅ Allowing GET to individual property');
+  // Allow GET to individual property
     return NextResponse.next();
   }
   
   if (publicRoutes.includes(pathname)) {
-    console.log('✅ Allowing public route:', pathname);
+  // Public route allowed
     return NextResponse.next();
   }
 
-  console.log('🔒 Checking authentication for:', pathname);
+  // Checking authentication
 
   // Check for authentication token
   let token = req.cookies.get('token')?.value || '';
@@ -132,11 +130,11 @@ export async function middleware(req: NextRequest) {
   }
 
   if (!token) {
-    console.log('❌ No token found for:', pathname);
+  // No token found
     return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
   }
 
-  console.log('✅ Token found, allowing:', pathname);
+  // Token found, proceeding
   return NextResponse.next();
 }
 

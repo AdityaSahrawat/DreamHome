@@ -47,7 +47,7 @@ const Property = () => {
   React.useEffect(() => {
     const fetchProperty = async () => {
       try {
-        console.log("id : " , id)
+  // Removed debug log: id
         const response = await axios.get(`/api/properties/${id}`);
         const propertyData = response.data.property;
         setProperty(propertyData);
@@ -58,7 +58,7 @@ const Property = () => {
         })) || [];
         setPhotos(photoObjects);
 
-        console.log(response.data)
+  // Removed debug log: response data
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
       } finally {

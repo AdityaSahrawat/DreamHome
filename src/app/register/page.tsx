@@ -135,7 +135,7 @@ export default function Register() {
       });
 
       const verifyData = await verifyResponse.json();
-      console.log("verifyData : " , verifyData)
+  // Removed debug log: verifyData
 
       if (!verifyResponse.ok) {
         throw new Error(verifyData.message || 'Invalid verification code'); 

@@ -1,5 +1,5 @@
 // app/api/negotiations/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import {NextResponse } from 'next/server';
 // Negotiations feature deprecated: endpoints now return 410 Gone.
 
 export async function POST() {

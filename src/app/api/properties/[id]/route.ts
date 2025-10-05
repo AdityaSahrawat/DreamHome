@@ -39,7 +39,7 @@ export async function DELETE(req : NextRequest , {params} : {params: Promise<{id
 }
 
 export async function GET(req : NextRequest ,{params} : {params: Promise<{id: string}> }){
-    console.log("Getting property details")
+    // Removed debug log: getting property details
     try{
         // Since middleware currently allows all API routes, we'll make this endpoint public for now
         // const authResult = authenticateToken(req);

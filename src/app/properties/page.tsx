@@ -54,7 +54,7 @@ const Index = () => {
         //   'Content-Type': 'application/json',
         // },
       });
-      console.log(response.data)
+  // Removed debug log
 
       if (response.data && response.data.properties) {
         setAllProperties(response.data.properties);

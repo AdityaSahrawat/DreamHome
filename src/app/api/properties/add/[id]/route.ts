@@ -8,11 +8,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
 
         const authResult = await authenticateToken(req);
-        if (authResult instanceof NextResponse) {
-            return authResult;
+        if (authResult instanceof NextResponse) return authResult;
+        if (!authResult) {
+            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         }
         const applicationId = params.id;
-        const { role, branch_id } = authResult;
+        const role = (authResult as { role?: string }).role;
+        const branch_id = (authResult as { branch_id?: number | null }).branch_id;
         if (role !== 'manager') {
             return NextResponse.json(
                 { message: 'Insufficient permissions' },
@@ -21,8 +23,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }
 
         const { status, assistantId } = await req.json();
-        console.log("body : " , status , assistantId)
-        console.log("id : " , applicationId)
+    // Removed debug log: status, assistantId
+    // Removed debug log: applicationId
 
         if (!status || !['approved', 'rejected'].includes(status)) {
             return NextResponse.json(
@@ -30,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
                 { status: 400 }
             );
         }
-        console.log("2")
+    // Removed debug log marker
         if (status === 'approved' && !assistantId) {
             return NextResponse.json(
                 { message: 'Assistant ID is required for approval' },
@@ -39,11 +41,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         }
 
         
-        console.log("3")
+    // Removed debug log marker
         const application = await prismaClient.property.findFirst({
             where: {
                 id: Number(applicationId),
-                branchId: branch_id
+                branchId: branch_id ?? undefined
             }
         });
         if (!application) {
