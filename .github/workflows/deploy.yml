@@ -41,14 +41,11 @@ jobs:
             docker stop dreamhome || true
             docker rm dreamhome || true
             
-            # Remove old image to force refresh
             docker rmi ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest || true
             
-            # Pull fresh image
             docker pull ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
             
-            # Run new container with correct environment variables
-            docker run -d -p 80:3000 --name dreamhome --restart=always \
+            docker run -d -p 3000:3000 --name dreamhome --restart=always \
               -e NODE_ENV=production \
               -e NEXT_TELEMETRY_DISABLED=1 \
               -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
@@ -57,7 +54,7 @@ jobs:
               -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
               -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
               -e NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}" \
-              -e NEXTAUTH_URL="http://98.70.24.108" \
+              -e NEXTAUTH_URL="https://dreamhome-app.duckdns.org" \
               -e AUTH_TRUST_HOST="true" \
               ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
             

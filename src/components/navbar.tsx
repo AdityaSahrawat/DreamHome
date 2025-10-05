@@ -26,10 +26,8 @@ const Navbar = () => {
 
   const checkAuth = async () => {
     try {
-      console.log("sending to /api/auth")
       // axios instance already configured with withCredentials
       const res = await axios.get('/api/auth');
-      console.log("Auth response:", res.data.authResult)
       if (res.status === 200 && res.data?.authResult) {
         setIsAuthenticated(true);
         setUserRole(res.data.authResult.role);
