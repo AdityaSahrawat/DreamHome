@@ -24,14 +24,10 @@ export default function Login() {
     try {
       const response = await axios.post("/api/auth/manual/login", { email, password });
       if (response.status === 200 && response.data.token) {
-        // Store token in localStorage for authorization headers
         localStorage.setItem('token', response.data.token);
-        // Cookie is also set HttpOnly by server
         
-        // Dispatch a custom event to notify navbar of successful login
         window.dispatchEvent(new CustomEvent('authStateChanged'));
         
-        // Redirect to home page
         router.push("/");
       } else {
         setError('Invalid login response');

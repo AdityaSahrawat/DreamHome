@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import ActionButton from "./actionButton";
 import axios from "@/src/lib/axios";
+import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 
 const Navbar = () => {
@@ -26,14 +27,11 @@ const Navbar = () => {
 
   const checkAuth = async () => {
     try {
-      // axios instance already configured with withCredentials
-      const res = await axios.get('/api/auth');
-      if (res.status === 200 && res.data?.authResult) {
+      const res = await axios.get('/api/auth/status');
+      if (res.data?.authenticated) {
         setIsAuthenticated(true);
-        setUserRole(res.data.authResult.role);
-      } else {
-        setIsAuthenticated(false);
-      }
+        setUserRole(res.data.user?.role || '');
+      } else setIsAuthenticated(false);
     } catch (error) {
       console.error("Auth check failed:", error);
       setIsAuthenticated(false);
@@ -63,8 +61,8 @@ const Navbar = () => {
 
   const confirmLogout = async () => {
     try {
-      // axios instance already configured with withCredentials
-      await axios.post('/api/auth/logout');
+      await axios.post('/api/auth/logout'); // manual token clear
+      await signOut({ redirect: false }); // next-auth session clear
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -72,6 +70,7 @@ const Navbar = () => {
     setIsAuthenticated(false);
     setUserRole("");
     setShowLogoutConfirm(false);
+    window.dispatchEvent(new CustomEvent('authStateChanged'));
     window.location.href = '/';
   };
 

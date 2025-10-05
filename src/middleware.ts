@@ -4,6 +4,10 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || '123');
 
+// authenticateToken now returns:
+// - null for public/unauthenticated allowed routes
+// - { id, role, branch_id, email? } for valid tokens
+// - throws NextResponse (returned) only when unauthorized/invalid
 export async function authenticateToken(req: NextRequest) {
   const pathname = new URL(req.url).pathname;
   const publicRoutes = [
@@ -11,6 +15,8 @@ export async function authenticateToken(req: NextRequest) {
     "/api/auth/login", 
     "/api/branch", 
     "/api/properties/all",
+    "/api/auth/status",
+    "/api/auth/complete",
     "/api/auth/signin",
     "/api/auth/callback",
     "/api/auth/session",
@@ -22,7 +28,7 @@ export async function authenticateToken(req: NextRequest) {
   ];
 
   if (publicRoutes.includes(pathname) || pathname.startsWith("/api/auth/")) {
-    return NextResponse.next(); 
+    return null; 
   }
 
   // Try to get token from Authorization header first
@@ -35,7 +41,7 @@ export async function authenticateToken(req: NextRequest) {
   }
 
   if (!token) {
-    return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+    return NextResponse.json({ message: 'Authentication required' }, { status: 401 }); // caller can detect instance
   }
 
   try {
@@ -86,6 +92,8 @@ export async function middleware(req: NextRequest) {
     "/api/branch", 
     "/api/properties/all",
     "/api/branches", // Allow GET access to branches for public viewing
+    "/api/auth/status",
+    "/api/auth/complete",
     "/api/auth/manual/login",
     "/api/auth/manual/send-code",
     "/api/auth/manual/verify-code"
