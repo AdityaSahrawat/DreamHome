@@ -21,10 +21,11 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import { Dialog, DialogContent, DialogTrigger } from "@/src/components/ui/dialog";
-import {Image, Upload, Trash2 } from "lucide-react";
+import {Upload, Trash2 } from "lucide-react";
 import { AspectRatio } from "@/src/components/ui/aspect-ratio";
 import axios from 'axios';
 import Navbar from '@/src/components/navbar';
+import Image from "next/image"
 
 const propertyTypes = [
   "House",
@@ -248,7 +249,7 @@ const Index = () => {
 
                     <div className="space-y-2">
                       <label htmlFor="price" className="block text-sm font-medium text-gray-700">
-                        Price ($)*
+                        Price (₹)*
                       </label>
                       <Input
                         type="number"
@@ -348,7 +349,7 @@ const Index = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label htmlFor="latitude" className="block text-sm font-medium text-gray-700">
-                        Latitude (optional)
+                        Latitude
                       </label>
                       <Input
                         type="number"
@@ -364,7 +365,7 @@ const Index = () => {
 
                     <div className="space-y-2">
                       <label htmlFor="longitude" className="block text-sm font-medium text-gray-700">
-                        Longitude (optional)
+                        Longitude
                       </label>
                       <Input
                         type="number"
@@ -381,7 +382,7 @@ const Index = () => {
 
                   <div className="space-y-2">
                     <label htmlFor="year_built" className="block text-sm font-medium text-gray-700">
-                      Year Built (optional)
+                      Year Built
                     </label>
                     <Input
                       type="number"
@@ -440,11 +441,9 @@ const Index = () => {
                                         <Image className="w-6 h-6 text-gray-400" />
                                       </div>
                                       {URL.createObjectURL && (
-                                        <img 
-                                          src={URL.createObjectURL(file)} 
-                                          alt={file.name}
-                                          className="absolute inset-0 w-full h-full object-cover"
-                                        />
+                                        
+                                        <Image className='absolute inset-0 w-full h-full object-cover' src={URL.createObjectURL(file)}
+                                          alt={file.name}></Image>
                                       )}
                                     </div>
                                   </div>
@@ -455,11 +454,9 @@ const Index = () => {
                                 <div className="space-y-4">
                                   <div className="font-medium text-center">{file.name}</div>
                                   <AspectRatio ratio={16/9} className="bg-muted overflow-hidden rounded-md">
-                                    <img 
-                                      src={URL.createObjectURL(file)}
+                                    <Image src={URL.createObjectURL(file)}
                                       alt={file.name}
-                                      className="object-contain w-full h-full"
-                                    />
+                                      className="object-contain w-full h-full"></Image>
                                   </AspectRatio>
                                 </div>
                               </DialogContent>
