@@ -19,7 +19,7 @@ const nextConfig: NextConfig = {
       },
     ], 
   },
-  // Fix for Server Actions with proxy/load balancer
+  // Fix for Server Actions with proxy/load balancer (disabled earlier for debugging)
   experimental: {
     serverActions: {
       allowedOrigins: ["98.70.24.108", "98.70.24.108:80", "localhost:3000"]
