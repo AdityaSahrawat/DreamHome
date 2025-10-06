@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
+import Credentials from 'next-auth/providers/credentials'
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prismaClient } from '@/database'
 
@@ -25,6 +26,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
+    Credentials({
+      name: 'Credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials.password) return null;
+        const user = await prismaClient.user.findUnique({
+          where: { email: credentials.email },
+          select: { id: true, email: true, name: true, password: true, role: true, branchId: true }
+        });
+        if (!user) return null;
+        // Plain password comparison (TODO: replace with bcrypt compare in future)
+        if (!user.password || user.password !== credentials.password) return null;
+        return {
+          id: String(user.id),
+          email: user.email,
+          name: user.name || undefined,
+          role: user.role,
+          branchId: user.branchId || null
+        } as unknown as AugmentedUser;
+      }
+    })
   ],
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true,

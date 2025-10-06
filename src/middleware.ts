@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
-import jwt from 'jsonwebtoken';
 import { auth } from '@/src/lib/auth';
 
 interface SessionUserLike {
@@ -10,7 +8,7 @@ interface SessionUserLike {
   email?: string | null;
 }
 
-const JWT_SECRET = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || '123');
+// Legacy manual JWT removed; only NextAuth session is authoritative.
 
 // authenticateToken now returns:
 // - null for public/unauthenticated allowed routes
@@ -39,42 +37,7 @@ export async function authenticateToken(req: NextRequest) {
     return null; 
   }
 
-  // Try to get token from Authorization header first
-  const authHeader = req.headers.get('Authorization') || "";
-  let token = authHeader.split(' ')[1];
-
-  
-  if (!token) {
-    token = req.cookies.get('token')?.value || '';
-  }
-
-  if (token) {
-    try {
-      try {
-        const { payload } = await jwtVerify(token, JWT_SECRET);
-        const user = payload as { id: number; role: string; branch_id?: number | null; email?: string };
-        return { id: user.id, role: user.role, branch_id: user.branch_id ?? null, email: user.email };
-      } catch {
-        const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || '123') as {
-          userId?: number;
-          id?: number;
-          role: string;
-            branchId?: number | null;
-          email?: string;
-        };
-        return {
-          id: decoded.userId || decoded.id || 0,
-          role: decoded.role,
-          branch_id: decoded.branchId ?? null,
-          email: decoded.email
-        };
-      }
-    } catch {
-      // Swallow and proceed to NextAuth fallback
-    }
-  }
-
-  // Fallback: use NextAuth session (Google or other providers)
+  // Use NextAuth session (Google or credentials)
   try {
     const session = await auth();
     if (session?.user && (session.user as SessionUserLike).id) {
@@ -140,21 +103,11 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Checking authentication
-
-  // Check for authentication token
-  let token = req.cookies.get('token')?.value || '';
-  if (!token) {
-    const authHeader = req.headers.get('Authorization') || "";
-    token = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : '';
-  }
-
-  if (!token) {
-  // No token found
+  // Enforce NextAuth session for protected routes
+  const session = await auth();
+  if (!session?.user) {
     return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
   }
-
-  // Token found, proceeding
   return NextResponse.next();
 }
 

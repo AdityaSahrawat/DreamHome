@@ -1,6 +1,6 @@
 "use client"
 
-import axios from '@/src/lib/axios';
+import { signIn } from 'next-auth/react';
 // pages/login.tsx
 import Head from 'next/head';
 import Link from 'next/link';
@@ -22,23 +22,19 @@ export default function Login() {
     setError(null);
     setLoading(true);
     try {
-      const response = await axios.post("/api/auth/manual/login", { email, password });
-      if (response.status === 200 && response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        
-        window.dispatchEvent(new CustomEvent('authStateChanged'));
-        
-        router.push("/");
+      const res = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+        callbackUrl: '/'
+      });
+      if (res?.error) {
+        setError('Invalid credentials');
       } else {
-        setError('Invalid login response');
+        router.push('/');
       }
-    } catch (err) {
-      if (err instanceof Error && 'response' in err) {
-        const axiosError = err as { response?: { data?: { message?: string } } };
-        setError(axiosError.response?.data?.message || 'Login failed');
-      } else {
-        setError('Unexpected error');
-      }
+    } catch {
+      setError('Login failed');
     } finally {
       setLoading(false);
     }
