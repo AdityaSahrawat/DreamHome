@@ -4,6 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 // Define the Branch interface
 interface Branch {
@@ -198,6 +199,18 @@ export default function Register() {
     }
   };
 
+  const googleReady = !!branchId && (userType === 'client' || (userType === 'staff' && !!role));
+
+  function handleGoogleRegister() {
+    if (!googleReady) return;
+    const params = new URLSearchParams();
+    params.set('from', 'google');
+    params.set('role', userType === 'client' ? 'client' : role);
+    if (userType !== 'client' && branchId) params.set('branch', branchId);
+    params.set('new', '1');
+    signIn('google', { callbackUrl: `/auth/complete?${params.toString()}` });
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <Head>
@@ -239,6 +252,88 @@ export default function Register() {
           {/* Step 1: Registration Form */}
           {step === 'form' && (
             <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Unified role / type selections */}
+              <div>
+                <label htmlFor="user-type" className="block text-sm font-medium text-gray-700">
+                  I want to register as a
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="user-type"
+                    value={userType}
+                    onChange={(e) => setUserType(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    <option value="client">Client</option>
+                    <option value="staff">Staff Member</option>
+                  </select>
+                </div>
+              </div>
+
+              {userType === 'staff' && (
+                <div>
+                  <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                    Staff Role
+                  </label>
+                  <div className="mt-1">
+                    <select
+                      id="role"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    >
+                      {STAFF_ROLES.map((staffRole) => (
+                        <option key={staffRole.value} value={staffRole.value}>
+                          {staffRole.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="branch" className="block text-sm font-medium text-gray-700">
+                  {userType === 'client' ? 'Preferred Branch' : 'Assigned Branch'}
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="branch"
+                    value={branchId}
+                    onChange={(e) => setBranchId(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    <option value="">Select a branch</option>
+                    {branches.map((branch, index) => (
+                      <option key={branch.branch_id || `branch-${index}`} value={branch.branch_id}>
+                        {branch.branch_name} ({branch.location})
+                      </option>
+                    ))}
+                  </select>
+                  {loading && <p className="text-xs text-gray-500 mt-1">Loading branches...</p>}
+                </div>
+              </div>
+
+              {/* Google button integrated */}
+              <div>
+                <button
+                  type="button"
+                  onClick={handleGoogleRegister}
+                  disabled={!branchId || (userType === 'staff' && !role) || loading}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium bg-white hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Continue registration with Google"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-5 w-5"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.954 4 4 12.954 4 24s8.954 20 20 20c11.046 0 20-8.954 20-20 0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571.001-.001.002-.001.003-.002l6.19 5.238C36.971 39.179 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+                  Continue with Google
+                </button>
+              </div>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300" /></div>
+                <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-500">Or continue manually</span></div>
+              </div>
               <div>
                 <label htmlFor="user-type" className="block text-sm font-medium text-gray-700">
                   I want to register as a

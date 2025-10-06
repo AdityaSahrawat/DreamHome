@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import axios from '@/src/lib/axios';
 
 interface Branch { id: number; name: string; }
@@ -15,6 +15,8 @@ export default function CompleteRegistration() {
   const [error, setError] = useState<string | null>(null);
   const [isNew, setIsNew] = useState(false);
 
+  const params = useSearchParams();
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -23,12 +25,25 @@ export default function CompleteRegistration() {
           router.replace('/login');
           return;
         }
-        // If user already has role + (if staff) branch, redirect
-        if (statusRes.data.user?.role && statusRes.data.user.role !== 'client' && statusRes.data.user?.branchId) {
+        const user = statusRes.data.user;
+        const urlRole = params.get('role');
+        const urlBranch = params.get('branch');
+        const viaGoogle = params.get('from') === 'google';
+        // If query includes role info and user missing role/branch, auto-complete
+        if (viaGoogle && urlRole && (!user?.role || (urlRole !== 'client' && !user?.branchId))) {
+          try {
+            await axios.post('/api/auth/complete', { role: urlRole, branchId: urlRole === 'client' ? null : urlBranch });
+            router.replace('/');
+            return;
+          } catch (e) {
+            // fall back to manual completion UI
+          }
+        }
+        if (user?.role && (user.role === 'client' || user.branchId)) {
           router.replace('/');
           return;
         }
-        setIsNew(!statusRes.data.user?.role);
+        setIsNew(!user?.role);
         const branchesRes = await axios.get('/api/branches');
         setBranches(branchesRes.data.branches || []);
       } catch {
@@ -38,7 +53,7 @@ export default function CompleteRegistration() {
       }
     };
     init();
-  }, [router]);
+  }, [router, params]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

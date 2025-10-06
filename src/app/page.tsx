@@ -21,9 +21,8 @@ const Index = () => {
 
   return (
     <div className={`min-h-screen flex flex-col transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-      <Navbar />
-      
-  <Hero />
+  <Navbar />
+      <Hero />
       
   {/* Primary Actions (trimmed) */}
   <section className="py-12 bg-white">

@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import { Dialog, DialogContent, DialogTrigger } from "@/src/components/ui/dialog";
-import { X, Image, Upload, Trash2 } from "lucide-react";
+import {Image, Upload, Trash2 } from "lucide-react";
 import { AspectRatio } from "@/src/components/ui/aspect-ratio";
 import axios from 'axios';
 import Navbar from '@/src/components/navbar';

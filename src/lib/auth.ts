@@ -3,6 +3,21 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prismaClient } from '@/database'
 
+interface AugmentedToken {
+  id?: string | number;
+  role?: string | null;
+  branchId?: number | null;
+  [key: string]: unknown;
+}
+
+interface AugmentedUser {
+  id: string;
+  role?: string | null;
+  branchId?: number | null;
+  email?: string | null;
+  name?: string | null;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prismaClient),
   providers: [
@@ -14,37 +29,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true,
   callbacks: {
-  async signIn({ account, user }) {
+    async signIn({ account, user }) {
       if (account?.provider !== 'google') return true;
+      // Minimal validation; keep fast. Additional checks can be added later.
       try {
-        const existing = await prismaClient.user.findUnique({
+        // Ensure provider is marked as google in DB (if new or previously manual)
+        await prismaClient.user.update({
           where: { id: Number(user.id) },
-          select: { id: true, role: true, branchId: true }
+          data: { provider: 'google' },
+        }).catch(async () => {
+          // If update fails because user doesn't exist yet, ignore: Prisma adapter will create.
         });
-        if (!existing?.role || (existing.role !== 'client' && !existing.branchId)) {
-          return true;
-        }
         return true;
       } catch (e) {
         console.error('signIn callback error', e);
-        return true; // fail open to not block login
+        return true; // fail open
       }
     },
     async redirect({ url, baseUrl }) {
-      // After Google login, if user incomplete, send to completion page
       try {
         if (url.startsWith(baseUrl)) {
-          // Inspect current user
-          const session = await auth();
-          if (session?.user?.id) {
-            const u = await prismaClient.user.findUnique({
-              where: { id: Number(session.user.id) },
-              select: { role: true, branchId: true }
-            });
-            if (!u?.role || (u.role !== 'client' && !u.branchId)) {
-              return baseUrl + '/auth/complete';
-            }
-          }
+          // We can inspect jwt via auth() but avoid extra DB queries here for speed.
           return url;
         }
         return baseUrl;
@@ -53,43 +58,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return baseUrl;
       }
     },
-    async session({ session, user, token }) {
-      try {
-        if (session.user) {
-          if (user) {
-            session.user.id = user.id
-          } else if (token) {
-            session.user.id = token.id as string
-          }
-          // augment with role & branch
-          try {
-            const dbUser = await prismaClient.user.findUnique({
-              where: { id: Number(session.user.id) },
-              select: { role: true, branchId: true }
-            });
-            if (dbUser) {
-              (session.user as unknown as { role?: string | null; branchId?: number | null }).role = dbUser.role || null;
-              (session.user as unknown as { role?: string | null; branchId?: number | null }).branchId = dbUser.branchId || null;
-            }
-          } catch {
-            console.warn('Session role enrichment failed');
-          }
-        }
-        return session
-      } catch (error) {
-        console.error('Session callback error:', error)
-        return session
-      }
-    },
     async jwt({ token, user }) {
       try {
         if (user) {
-          token.id = user.id
+          (token as AugmentedToken).id = (user as AugmentedUser).id;
+          // Enrich once at sign-in with role/branch
+          const dbUser = await prismaClient.user.findUnique({
+            where: { id: Number(user.id) },
+            select: { role: true, branchId: true }
+          });
+          if (dbUser) {
+            (token as AugmentedToken).role = dbUser.role || null;
+            (token as AugmentedToken).branchId = dbUser.branchId || null;
+          }
         }
-        return token
+        return token;
       } catch (error) {
-        console.error('JWT callback error:', error)
-        return token
+        console.error('JWT callback error:', error);
+        return token;
+      }
+    },
+    async session({ session, token }) {
+      try {
+        if (session.user && token) {
+          const t = token as AugmentedToken;
+          (session.user as AugmentedUser).id = String(t.id || '');
+          (session.user as AugmentedUser).role = t.role ?? null;
+          (session.user as AugmentedUser).branchId = t.branchId ?? null;
+        }
+        return session;
+      } catch (error) {
+        console.error('Session callback error:', error);
+        return session;
       }
     },
   },
@@ -98,7 +98,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: '/login',
   },
   session: {
-    strategy: 'database',
+    strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   debug: process.env.NODE_ENV === 'development',
