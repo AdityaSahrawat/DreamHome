@@ -8,12 +8,12 @@ import { authenticateToken } from '@/src/middleware';
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
     try {
         const authResult = await authenticateToken(request);
-
-
-        if (authResult instanceof NextResponse) {
-            return authResult;
+        if (authResult instanceof NextResponse) return authResult;
+        if (!authResult) {
+            return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
         }
-        const { role, branch_id } = authResult;
+        const role = (authResult as { role?: string }).role;
+        const branch_id = (authResult as { branch_id?: number | null }).branch_id;
 
 
         const { status } = await request.json();
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
         const applicationId = await params.id;
 
-        console.log("applicationId : " , applicationId)
+    // Removed debug log: applicationId
         const application = await prismaClient.staffApplication.findUnique({
             where: { id: parseInt(applicationId) }
         });

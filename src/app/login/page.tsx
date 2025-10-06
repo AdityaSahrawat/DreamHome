@@ -1,6 +1,6 @@
 "use client"
 
-import axios from 'axios';
+import { signIn } from 'next-auth/react';
 // pages/login.tsx
 import Head from 'next/head';
 import Link from 'next/link';
@@ -14,12 +14,30 @@ export default function Login() {
   const [userType, setUserType] = useState('client');
   const router = useRouter();
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const response = await axios.post("/api/auth/login" , {email , password});
-    const token = response.data.token 
-    window.localStorage.setItem("token" , token)
-    router.push("/")
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+        callbackUrl: '/'
+      });
+      if (res?.error) {
+        setError('Invalid credentials');
+      } else {
+        router.push('/');
+      }
+    } catch {
+      setError('Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,11 +150,15 @@ export default function Login() {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={loading}
+                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-70"
               >
-                Sign in
+                {loading ? 'Signing in...' : 'Sign in'}
               </button>
             </div>
+            {error && (
+              <p className="text-sm text-red-600 text-center">{error}</p>
+            )}
           </form>
 
           <div className="mt-6">

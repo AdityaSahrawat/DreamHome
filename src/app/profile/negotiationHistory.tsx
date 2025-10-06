@@ -4,8 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/src/componen
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/src/components/ui/table";
 import { Badge } from "@/src/components/ui/badge";
 import { useToast } from "@/src/components/hook/use-toast";
-import { useEffect, useState } from "react";
-import { negotiations } from "@/src/types";
+import { useEffect, useState, useCallback } from "react";
+import { Negotiation } from "@/src/types";
+import { formatDateTime } from "@/src/lib/utils";
 import { Button } from "@/src/components/ui/button";
 import { Loader2 } from "lucide-react";
 import NegotiationDialog from "./negotiationDialog";
@@ -26,29 +27,18 @@ export default function NegotiationHistoryDialog({
   onUpdate
 }: NegotiationHistoryDialogProps) {
   const { toast } = useToast();
-  const [negotiations, setNegotiations] = useState<negotiations[]>([]);
+  const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedNegotiation, setSelectedNegotiation] = useState<negotiations | null>(null);
+  const [selectedNegotiation, setSelectedNegotiation] = useState<Negotiation | null>(null);
   const [negotiationDialogOpen, setNegotiationDialogOpen] = useState(false);
 
   const isStaff = ['assistant', 'manager', 'supervisor'].includes(userRole);
 
-  useEffect(() => {
-    if (open) {
-      fetchNegotiations();
-    }
-  }, [open]);
-
-  const fetchNegotiations = async () => {
+  const fetchNegotiations = useCallback(async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      if (!token) throw new Error('No authentication token found');
-
       const response = await fetch(`/api/negotiations?draft_id=${draftId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: {}
       });
       
       if (!response.ok) throw new Error('Failed to fetch negotiations');
@@ -65,7 +55,13 @@ export default function NegotiationHistoryDialog({
     } finally {
       setLoading(false);
     }
-  };
+  }, [draftId, toast]);
+
+  useEffect(() => {
+    if (open) {
+      fetchNegotiations();
+    }
+  }, [open, fetchNegotiations]);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -76,7 +72,7 @@ export default function NegotiationHistoryDialog({
     }
   };
 
-  const handleRespond = (negotiation: negotiations) => {
+  const handleRespond = (negotiation: Negotiation) => {
     setSelectedNegotiation(negotiation);
     setNegotiationDialogOpen(true);
   };
@@ -124,11 +120,11 @@ export default function NegotiationHistoryDialog({
                         </TableCell>
                         <TableCell>
                           <pre className="text-xs max-w-xs overflow-x-auto py-2">
-                            {JSON.stringify(negotiation.proposed_terms, null, 2)}
+                            {JSON.stringify(negotiation.proposedTerms, null, 2)}
                           </pre>
                         </TableCell>
                         <TableCell>
-                          {new Date(negotiation.created_at).toLocaleString()}
+                          {formatDateTime(negotiation.createdAt)}
                         </TableCell>
                         {isStaff && negotiation.status === 'pending' && (
                           <TableCell>
@@ -163,10 +159,8 @@ export default function NegotiationHistoryDialog({
           draft={{
             id: draftId,
             propertyId: 0,
-            property_id: 0,
             clientId: 0,
-            client_id: 0,
-            current_terms: selectedNegotiation.proposed_terms,
+            current_terms: selectedNegotiation.proposedTerms as unknown as JSON,
             propertyTitle: "",
             propertyAddress: "",
             status: "draft",

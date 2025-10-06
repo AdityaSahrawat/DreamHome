@@ -82,38 +82,62 @@ export interface ViewRequest {
     message: string;
 }
 
-export interface Lease_draft {
-    id : number,
-    property_id : number, 
-    client_id : number,
-    current_terms?: LeaseTerms;
-    status : 'draft' | 'client_review' | 'manager_review' | 'manager_review' | 'approved' | 'signed';
-    version : number
-}
 
-export interface negotiations {
+// Simplified lease draft lifecycle statuses
+// draft -> (client_accept | client_reject) -> client_accepted | client_rejected -> (assistant_update resets to draft) -> manager_approve -> approved -> signed (optional after lease creation)
+// canceled is terminal when assistant cancels before approval
+export type LeaseDraftStatus =
+    | 'draft'
+    | 'client_accepted'
+    | 'client_rejected'
+    | 'approved'
+    | 'canceled'
+    | 'signed'; // retained for backward compatibility with finalization routes
+export type NegotiationStatus = 'pending' | 'accepted' | 'rejected' | 'countered';
+
+export interface LeaseDraft {
     id: number;
-    draft_id: number;
-    proposed_terms: JSON; 
-    status: 'pending' | 'accepted' | 'rejected' | 'countered';
-    message : string
-    created_at: Date;
-    client_id: number;
-    responded_at?: Date;
-    staff_response?: JSON; 
-    response_message?: string;
-    staff_id?: number; 
-    previous_negotiation_id?: number;
+    propertyId: number;
+    clientId: number;
+    currentTerms?: LeaseTerms; // Source of truth for current proposed/accepted terms
+    status: LeaseDraftStatus;
+    version: number;
+    createdAt?: Date; // optional while DB column naming verified
+    updatedAt?: Date;
 }
 
-export interface Leases {
-    id : number,
-    draft_id : number;
-    final_terms : JSON,
-    signed_by_client : boolean;
-    signed_by_agent : boolean;
-    active_from : Date
+export interface Negotiation {
+    id: number;
+    draftId: number;
+    proposedTerms: LeaseTerms; // Normalized typed structure instead of generic JSON
+    status: NegotiationStatus;
+    message?: string | null;
+    createdAt: Date;
+    clientId: number;
+    respondedAt?: Date | null;
+    staffResponse?: LeaseTerms | null; // Counter terms if staff issued counter
+    responseMessage?: string | null;
+    staffId?: number | null; // Null until a staff member responds
+    previousNegotiationId?: number | null;
+    clientName?: string; // denormalized for DTO convenience (API layer only)
+    staffName?: string;  // denormalized for DTO convenience (API layer only)
 }
+
+export interface Lease {
+    id: number;
+    draftId: number;
+    finalTerms: LeaseTerms;
+    signedByClient: boolean;
+    signedByAgent: boolean;
+    activeFrom: Date;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+// Backwards compatibility (to be removed once all usages migrated)
+export type Lease_draft = LeaseDraft;
+export type negotiations = Negotiation;
+export type Leases = Lease;
 
 export interface LeaseTerms {
     financial: {

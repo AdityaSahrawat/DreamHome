@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
-import jwt from 'jsonwebtoken';
+import { auth } from '@/src/lib/auth';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || '123');
+interface SessionUserLike {
+  id?: string | number;
+  role?: string | null;
+  branchId?: number | null;
+  email?: string | null;
+}
 
+// Legacy manual JWT removed; only NextAuth session is authoritative.
+
+// authenticateToken now returns:
+// - null for public/unauthenticated allowed routes
+// - { id, role, branch_id, email? } for valid tokens
+// - throws NextResponse (returned) only when unauthorized/invalid
 export async function authenticateToken(req: NextRequest) {
   const pathname = new URL(req.url).pathname;
   const publicRoutes = [
@@ -11,6 +21,8 @@ export async function authenticateToken(req: NextRequest) {
     "/api/auth/login", 
     "/api/branch", 
     "/api/properties/all",
+    "/api/auth/status",
+    "/api/auth/complete",
     "/api/auth/signin",
     "/api/auth/callback",
     "/api/auth/session",
@@ -22,72 +34,36 @@ export async function authenticateToken(req: NextRequest) {
   ];
 
   if (publicRoutes.includes(pathname) || pathname.startsWith("/api/auth/")) {
-    return NextResponse.next(); 
+    return null; 
   }
 
-  // Try to get token from Authorization header first
-  const authHeader = req.headers.get('Authorization') || "";
-  let token = authHeader.split(' ')[1];
-
-  // If no Authorization header, try to get token from cookie
-  if (!token) {
-    token = req.cookies.get('token')?.value || '';
-  }
-
-  if (!token) {
-    return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
-  }
-
+  // Use NextAuth session (Google or credentials)
   try {
-    // Try to verify with jose first (for existing tokens)
-    try {
-      const { payload } = await jwtVerify(token, JWT_SECRET);
-      const user = payload as { id: number; role: string; branch_id: number };
-      return user;
-    } catch {
-      // If jose fails, try with jsonwebtoken (for manual auth tokens)
-      const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || '123') as {
-        userId?: number;
-        id?: number;
-        role: string;
-        branchId?: number;
-        email: string;
-      };
-      
-      // Transform the payload to match expected format
+    const session = await auth();
+    if (session?.user && (session.user as SessionUserLike).id) {
+      const su = session.user as SessionUserLike;
       return {
-        id: decoded.userId || decoded.id || 0,
-        role: decoded.role,
-        branch_id: decoded.branchId || null,
-        email: decoded.email
+        id: Number(su.id),
+        role: su.role || 'client',
+        branch_id: su.branchId ?? null,
+        email: su.email || undefined
       };
     }
   } catch {
-    return NextResponse.json({ message: 'Invalid or expired token' }, { status: 403 });
+    // ignore, will return 401 below
   }
-}
 
-export function authorizeRole(roles: string[]) {
-  return async function (req: NextRequest) {
-    const user = await authenticateToken(req);
-
-    if (user instanceof NextResponse) {
-        return user;
-    }
-    
-    if (!roles.includes(user.role)) {
-        return NextResponse.json({ message: 'Insufficient permissions' }, { status: 403 });
-    }
-    
-    return user; 
-  };
+  return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
 }
 
 export async function middleware(req: NextRequest) {
   const pathname = req.nextUrl.pathname;
   
+  // Debug logs removed for production performance.
+  
   // Allow NextAuth routes to pass through
   if (pathname.startsWith("/api/auth/")) {
+  // Allowing NextAuth route
     return NextResponse.next();
   }
   
@@ -96,43 +72,45 @@ export async function middleware(req: NextRequest) {
     "/api/auth/login", 
     "/api/branch", 
     "/api/properties/all",
-    "/api/branches" // Allow GET access to branches for public viewing
+    "/api/branches", // Allow GET access to branches for public viewing
+    "/api/auth/status",
+    "/api/auth/complete",
+    "/api/auth/manual/login",
+    "/api/auth/manual/send-code",
+    "/api/auth/manual/verify-code"
   ];
   
   // Allow GET requests to branches (viewing), but protect POST (creation)
   if (pathname === "/api/branches" && req.method === "GET") {
+  // Allow GET to branches
+    return NextResponse.next();
+  }
+  
+  // Allow access to view all properties publicly
+  if (pathname === "/api/properties/all" && req.method === "GET") {
+  // Allow GET to properties/all
+    return NextResponse.next();
+  }
+  
+  // Allow access to individual property details publicly  
+  if (pathname.match(/^\/api\/properties\/\d+$/) && req.method === "GET") {
+  // Allow GET to individual property
     return NextResponse.next();
   }
   
   if (publicRoutes.includes(pathname)) {
+  // Public route allowed
     return NextResponse.next();
   }
 
-  const authResult = await authenticateToken(req);
-  if (authResult instanceof NextResponse) {
-    return authResult; 
+  // Enforce NextAuth session for protected routes
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
   }
-
-  const roleBasedRoutes: { [key: string]: string[] } = {
-    "/api/notification": ["client", "manager", "owner" ,"assistant"],
-    "/api/client": ["client"],
-    "/api/properties": ["client", "manager" ,"assistant"],
-    "/api/profile": ["client", "manager", "assistant", "owner"],
-  };
-
-  for (const route in roleBasedRoutes) {
-    if (pathname.startsWith(route)) {
-      const authResponse = await authorizeRole(roleBasedRoutes[route])(req);
-      if (authResponse instanceof NextResponse) {
-        return authResponse;
-      }
-    }
-  }
-
   return NextResponse.next();
 }
 
-// Apply Middleware to API Routes
 export const config = {
-  matcher: "/api/:path*",
+  matcher: ['/api/:path*']
 };

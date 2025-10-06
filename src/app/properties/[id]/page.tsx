@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { 
   Bed, 
   Bath, 
@@ -15,18 +15,25 @@ import {
 
 import { Card, CardContent } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
-import { Separator } from "@/src/components/ui/seperator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
+// Removed Tabs & Separator as layout simplified (Overview removed, Features + Map merged)
 import { PropertyGallery } from "./propertyGallery";
-import { PropertyAgent } from "./propertyAgent";
-import { PropertyContactForm } from "./propertyContactForm";
-import { PropertyMap } from "./propertyMap";
+import dynamic from 'next/dynamic';
+// Dynamically import the Leaflet map to disable SSR (Leaflet touches window at module scope)
+const PropertyMap = dynamic(() => import('./propertyMap').then(m => m.PropertyMap), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[300px] w-full flex items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">
+      Loading map...
+    </div>
+  )
+});
 import { PropertyFeatures } from "./propertyFeature";
 import { cn } from "@/lib/utils";
 import type { Property, Property_image } from "@/src/types";
 import axios from "axios";
 import { useParams } from "next/navigation";
 import Navbar from "@/src/components/navbar";
+import { PropertyContactForm } from "./propertyContactForm";
 
 
 const Property = () => {
@@ -40,18 +47,18 @@ const Property = () => {
   React.useEffect(() => {
     const fetchProperty = async () => {
       try {
-        const token = localStorage.getItem('token')
-        console.log("id : " , id)
-        const response = await axios.get(`/api/properties/${id}` , {
-          headers : {
-            Authorization : `Bearer ${token}`,
-            'Content-Type' : 'application/json'
-          }
-        })
-        setProperty(response.data.property);
-        setPhotos(response.data.photos);
+  // Removed debug log: id
+        const response = await axios.get(`/api/properties/${id}`);
+        const propertyData = response.data.property;
+        setProperty(propertyData);
+        const photoObjects = propertyData.photos?.map((url: string, index: number) => ({
+          id: index,
+          photo_url: url,
+          property_id: propertyData.id
+        })) || [];
+        setPhotos(photoObjects);
 
-        console.log(response.data)
+  // Removed debug log: response data
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
       } finally {
@@ -71,7 +78,7 @@ const Property = () => {
       <div className="container mx-auto py-12 px-4">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-800">
-            Sorry, we couldn't find that property
+            Sorry, we couldn&apos;t find that property
           </h2>
           <p className="mt-2 text-gray-600">
             {error || "The property you're looking for might have been removed or is temporarily unavailable."}
@@ -99,13 +106,7 @@ const Property = () => {
   const galleryImages = photos.map(photo => photo.photo_url);
 
   // Mock agent data (since it's not in the API response)
-  const agent = {
-    name: "John Doe",
-    photo: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e",
-    phone: "(123) 456-7890",
-    email: "john.doe@example.com",
-    company: "Real Estate Inc."
-  };
+  // (Agent data placeholder removed – not used in current layout)
 
   // Mock features data (since it's not in the API response)
   const features = [
@@ -229,20 +230,35 @@ const Property = () => {
               </CardContent>
             </Card>
 
-            {/* Tabs for different property aspects */}
-            <Tabs defaultValue="overview" className="mb-8">
-              <TabsList className="w-full md:w-auto grid grid-cols-3 md:flex">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="features">Features</TabsTrigger>
-                <TabsTrigger value="map">Map</TabsTrigger>
-              </TabsList>
-              <TabsContent value="overview" className="mt-6">
-                <h3 className="text-xl font-semibold mb-4">Property Overview</h3>
-                <p className="text-muted-foreground mb-6">{property.description}</p>
-                
-                <Separator className="my-6" />
-                
-                <h3 className="text-xl font-semibold mb-4">Property Details</h3>
+            {/* Combined Features & Map Section */}
+            <div className="mb-8 space-y-8">
+              <div>
+                <h3 className="text-xl font-semibold mb-4">Property Description</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  {property.description || 'No description provided.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                <Card className="xl:col-span-1 h-fit">
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Features</h3>
+                    <PropertyFeatures features={features} />
+                  </CardContent>
+                </Card>
+                <Card className="xl:col-span-2 h-fit">
+                  <CardContent className="p-6">
+                    <h3 className="text-lg font-semibold mb-4">Location</h3>
+                    <PropertyMap 
+                      location={{ lat: property.latitude, lng: property.longitude }} 
+                      address={property.address} 
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-semibold mb-4">Key Details</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Property Type</span>
@@ -261,22 +277,14 @@ const Property = () => {
                     <span className="font-medium">{property.sqft}</span>
                   </div>
                 </div>
-              </TabsContent>
-              
-              <TabsContent value="features" className="mt-6">
-                <PropertyFeatures features={features} />
-              </TabsContent>
-              
-              <TabsContent value="map" className="mt-6">
-                <PropertyMap location={{ lat: property.latitude, lng: property.longitude }} address={property.address} />
-              </TabsContent>
-            </Tabs>
+              </div>
+            </div>
           </div>
 
           <div>
             {/* Sidebar with agent info and contact form */}
             <div className="space-y-6">
-              <PropertyAgent agent={agent} />
+              {/* <PropertyAgent agent={agent} /> */}
               <PropertyContactForm propertyId={property.id} />
             </div>
           </div>

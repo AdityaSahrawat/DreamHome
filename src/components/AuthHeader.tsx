@@ -1,9 +1,9 @@
 "use client"
 
-import { useSession, signOut } from "next-auth/react"
+import { useSession } from "next-auth/react"
+import { hybridLogout } from '@/src/lib/logout';
 import Link from "next/link"
 import Image from "next/image"
-// import { Button } from "@/components/ui/button"
 import { Button } from "@/src/components/ui/button"
 
 export default function AuthHeader() {
@@ -31,7 +31,7 @@ export default function AuthHeader() {
           </span>
         </div>
         <Button
-          onClick={() => signOut({ callbackUrl: '/' })}
+          onClick={() => hybridLogout({ redirect: true })}
           variant="outline"
           size="sm"
         >
