@@ -1,7 +1,0 @@
-# Restrict Browserslist resolution locally to avoid scanning user profile directories
-# This should prevent traversing into Windows junctions like C:/Users/HP/Application Data
-last 2 chrome versions
-last 2 edge versions
-last 2 firefox versions
-last 2 safari versions
-not dead
