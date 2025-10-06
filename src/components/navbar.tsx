@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
+import { hybridLogout } from '@/src/lib/logout';
 import ActionButton from './actionButton';
 import { Menu, X } from 'lucide-react';
 
@@ -26,8 +27,7 @@ export default function Navbar() {
   async function logout() {
     try {
       setLoggingOut(true);
-      await signOut({ redirect: false });
-      window.location.href = '/';
+      await hybridLogout({ redirect: false });
     } finally {
       setLoggingOut(false);
     }

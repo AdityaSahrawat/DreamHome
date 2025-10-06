@@ -57,8 +57,7 @@ const Index = () => {
   });
   const [files, setFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
-  const [previewImageName, setPreviewImageName] = useState<string>('');
+  // Removed unused preview image state to satisfy linter
 
 
   const handleChange = (
@@ -89,10 +88,8 @@ const Index = () => {
     setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index));
   };
 
-  const handlePreviewImage = (file: File) => {
-    const fileUrl = URL.createObjectURL(file);
-    setPreviewImage(fileUrl);
-    setPreviewImageName(file.name);
+  const handlePreviewImage = () => {
+    // Preview functionality currently disabled; retained function stub for future implementation
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,7 +164,7 @@ const Index = () => {
       } else {
         alert('Failed to list property. Please try again.');
       }
-    } catch (error) {
+  } catch {
   // Removed debug log: error
       alert('An error occurred. Please try again.');
     } finally {
@@ -185,6 +182,13 @@ const Index = () => {
             <div className="text-center mb-8 animate-fade-in">
               <h1 className="text-4xl font-bold tracking-tight text-gray-900 mb-2">List Your Property</h1>
               <p className="text-lg text-gray-600">Fill in the details below to showcase your property</p>
+              <div className="mt-4 inline-flex items-start gap-2 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-left">
+                <span className="mt-0.5 h-2 w-2 rounded-full bg-red-500 animate-pulse" aria-hidden="true"></span>
+                <p className="text-sm text-red-700">
+                  Newly submitted properties must be <span className="font-semibold">reviewed & approved by your Branch Manager</span> before they become publicly visible on the website.
+                  You will be notified once the status changes from <span className="font-mono">pending</span> to <span className="font-mono">approved</span>.
+                </p>
+              </div>
             </div>
 
             <Card className="shadow-xl border-0 overflow-hidden bg-white/80 backdrop-blur-sm animate-scale-in">
@@ -437,8 +441,8 @@ const Index = () => {
                                 >
                                   <div className="aspect-square relative bg-gray-100">
                                     <div className="absolute inset-0 flex items-center justify-center">
-                                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-gray-200 to-gray-300 animate-image-shimmer bg-[length:400%_100%]">
-                                        <Image className="w-6 h-6 text-gray-400" />
+                                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-gray-200 to-gray-300 animate-image-shimmer bg-[length:400%_100%]" aria-hidden="true">
+                                        <Image className="w-6 h-6 text-gray-400" alt="placeholder" src="/next.svg" width={24} height={24} />
                                       </div>
                                       {URL.createObjectURL && (
                                         

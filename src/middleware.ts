@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import jwt from 'jsonwebtoken';
+import { auth } from '@/src/lib/auth';
+
+interface SessionUserLike {
+  id?: string | number;
+  role?: string | null;
+  branchId?: number | null;
+  email?: string | null;
+}
 
 const JWT_SECRET = new TextEncoder().encode(process.env.NEXTAUTH_SECRET || '123');
 
@@ -35,42 +43,54 @@ export async function authenticateToken(req: NextRequest) {
   const authHeader = req.headers.get('Authorization') || "";
   let token = authHeader.split(' ')[1];
 
-  // If no Authorization header, try to get token from cookie
+  
   if (!token) {
     token = req.cookies.get('token')?.value || '';
   }
 
-  if (!token) {
-    return NextResponse.json({ message: 'Authentication required' }, { status: 401 }); // caller can detect instance
+  if (token) {
+    try {
+      try {
+        const { payload } = await jwtVerify(token, JWT_SECRET);
+        const user = payload as { id: number; role: string; branch_id?: number | null; email?: string };
+        return { id: user.id, role: user.role, branch_id: user.branch_id ?? null, email: user.email };
+      } catch {
+        const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || '123') as {
+          userId?: number;
+          id?: number;
+          role: string;
+            branchId?: number | null;
+          email?: string;
+        };
+        return {
+          id: decoded.userId || decoded.id || 0,
+          role: decoded.role,
+          branch_id: decoded.branchId ?? null,
+          email: decoded.email
+        };
+      }
+    } catch {
+      // Swallow and proceed to NextAuth fallback
+    }
   }
 
+  // Fallback: use NextAuth session (Google or other providers)
   try {
-    // Try to verify with jose first (for existing tokens)
-    try {
-      const { payload } = await jwtVerify(token, JWT_SECRET);
-      const user = payload as { id: number; role: string; branch_id: number };
-      return user;
-    } catch {
-      // If jose fails, try with jsonwebtoken (for manual auth tokens)
-      const decoded = jwt.verify(token, process.env.NEXTAUTH_SECRET || '123') as {
-        userId?: number;
-        id?: number;
-        role: string;
-        branchId?: number;
-        email: string;
-      };
-      
-      // Transform the payload to match expected format
+    const session = await auth();
+    if (session?.user && (session.user as SessionUserLike).id) {
+      const su = session.user as SessionUserLike;
       return {
-        id: decoded.userId || decoded.id || 0,
-        role: decoded.role,
-        branch_id: decoded.branchId || null,
-        email: decoded.email
+        id: Number(su.id),
+        role: su.role || 'client',
+        branch_id: su.branchId ?? null,
+        email: su.email || undefined
       };
     }
   } catch {
-    return NextResponse.json({ message: 'Invalid or expired token' }, { status: 403 });
+    // ignore, will return 401 below
   }
+
+  return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
 }
 
 export async function middleware(req: NextRequest) {

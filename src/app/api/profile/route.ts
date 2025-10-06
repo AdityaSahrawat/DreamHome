@@ -29,6 +29,10 @@ export async function GET(req: NextRequest) {
     if (authResult instanceof NextResponse) {
         return authResult;
     }
+    // If authenticateToken returned null (public route logic) treat as unauthorized for this protected endpoint
+    if (authResult === null) {
+        return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+    }
     
     const { id, role, branch_id } = authResult;
     try {

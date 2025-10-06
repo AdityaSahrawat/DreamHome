@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { signOut } from 'next-auth/react';
+import { hybridLogout } from '@/src/lib/logout';
 import ActionButton from './actionButton';
 import { Menu, X } from 'lucide-react';
 
@@ -19,8 +19,7 @@ export default function NavbarClient({ authed, role }: NavbarClientProps) {
   async function logout() {
     try {
       setLoggingOut(true);
-      await signOut({ redirect: false });
-      window.location.href = '/';
+  await hybridLogout({ redirect: false });
     } finally {
       setLoggingOut(false);
     }
