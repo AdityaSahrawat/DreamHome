@@ -1,24 +1,17 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
-import Image from "next/image";
 import ActionButton from "./actionButton";
 
 
 const Hero = () => {
   return (
-    <section className="relative w-full min-h-screen flex items-center overflow-hidden pt-24">
+    <section className="relative w-full min-h-[78vh] md:min-h-[86vh] flex items-center overflow-hidden pt-24">
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-indigo-800/90 mix-blend-multiply" />
-        <div className="absolute inset-0">
-          <Image
-            src="/uploads/dreamhome_hero.avif"
-            alt="Modern building"
-            fill
-            priority
-            className="object-cover"
-          />
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-700" />
+        {/* Decorative orbs */}
+        <div className="absolute -top-16 -left-16 h-72 w-72 rounded-full bg-white/10 blur-3xl" aria-hidden />
+        <div className="absolute -bottom-16 -right-16 h-72 w-72 rounded-full bg-blue-300/20 blur-3xl" aria-hidden />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full">
@@ -27,7 +20,7 @@ const Hero = () => {
             Discover Your Perfect Living Space
           </span>
 
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white tracking-tight leading-tight max-w-4xl animate-slide-up" style={{ animationDelay: "0.1s" }}>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-tight max-w-4xl animate-slide-up" style={{ animationDelay: "0.1s" }}>
             Find Your Perfect Home with <span className="text-blue-200">DreamHome</span>
           </h1>
 
@@ -52,7 +45,7 @@ const Hero = () => {
             </ActionButton>
           </div>
 
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-8 animate-slide-up" style={{ animationDelay: "0.4s" }}>
+          <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-8 animate-slide-up" style={{ animationDelay: "0.4s" }}>
             <div className="text-center">
               <p className="text-3xl md:text-4xl font-bold text-white">5000+</p>
               <p className="text-white/80 text-sm mt-1">Properties</p>
@@ -73,7 +66,7 @@ const Hero = () => {
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent"></div>
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
     </section>
   );
 };

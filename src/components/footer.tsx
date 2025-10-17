@@ -3,15 +3,16 @@ import { Separator } from "./ui/seperator"
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto py-12 px-6 lg:px-8">
+    <footer className="relative bg-gray-950 text-white">
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_-10%,rgba(59,130,246,0.15),transparent_70%)]" />
+      <div className="relative max-w-7xl mx-auto py-12 px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Company Info */}
           <div className="space-y-4">
-            <h3 className="text-2xl font-bold">
+            <h3 className="text-2xl font-bold tracking-tight">
               <span className="text-primary">Dream</span>Home
             </h3>
-            <p className="text-gray-400 max-w-xs">
+            <p className="text-gray-400 max-w-xs leading-relaxed">
               Making property rental and management simple, transparent, and stress-free since 2023.
             </p>
             <div className="flex space-x-4">
@@ -77,7 +78,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <Separator className="my-8 bg-gray-800" />
+        <Separator className="my-8 bg-white/10" />
 
         <div className="flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">

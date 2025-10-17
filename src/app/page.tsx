@@ -5,12 +5,13 @@ import dynamic from 'next/dynamic';
 import { ArrowRight, Search, Shield, Clock, Home, PenTool, CheckCircle } from "lucide-react";
 import Navbar from "@/src/components/navbar";
 // Lazy load heavy hero section to reduce initial JS on low resource (B1s) instances
-const Hero = dynamic(() => import('@/src/components/hero'), { ssr: true, loading: () => (
+const Hero = dynamic(() => import('@/src/components/hero'), { ssr: false, loading: () => (
   <div className="w-full h-72 flex items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-50 text-gray-500">Loading...</div>
 ) });
 import FeatureCard from "@/src/components/featureCard";
-import ActionButton from "@/src//components/actionButton";
+import ActionButton from "@/src/components/actionButton";
 import Footer from "@/src/components/footer";
+import TestimonialCard from "@/src/components/testimonialCard";
 
 const Index = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -21,11 +22,24 @@ const Index = () => {
 
   return (
     <div className={`min-h-screen flex flex-col transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-  <Navbar />
+      <Navbar />
       <Hero />
       
-  {/* Primary Actions (trimmed) */}
-  <section className="py-12 bg-white">
+      {/* Trusted by logos */}
+      <section className="py-10 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex items-center justify-center gap-10 md:gap-16 grayscale opacity-80">
+            <div className="h-8 w-24 bg-gray-200 rounded" aria-hidden />
+            <div className="h-8 w-24 bg-gray-200 rounded" aria-hidden />
+            <div className="h-8 w-24 bg-gray-200 rounded" aria-hidden />
+            <div className="hidden sm:block h-8 w-24 bg-gray-200 rounded" aria-hidden />
+            <div className="hidden md:block h-8 w-24 bg-gray-200 rounded" aria-hidden />
+          </div>
+        </div>
+      </section>
+
+      {/* Primary Actions */}
+      <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex flex-col items-center text-center mb-10">
             <span className="inline-block px-4 py-2 rounded-full bg-blue-50 text-primary text-sm font-medium mb-4">
@@ -39,7 +53,7 @@ const Index = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Card 1 */}
-            <div className="glass-card rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 animate-slide-up" style={{animationDelay: "0.1s"}}>
+            <div className="rounded-2xl overflow-hidden transition-all duration-300 border border-gray-200 bg-white shadow-sm hover:shadow-md hover:-translate-y-1 animate-slide-up" style={{animationDelay: "0.1s"}}>
               <div className="h-40 bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
                 <Home className="h-16 w-16 text-white" />
               </div>
@@ -55,7 +69,7 @@ const Index = () => {
             </div>
 
             {/* Card 2 */}
-            <div className="glass-card rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 animate-slide-up" style={{animationDelay: "0.2s"}}>
+            <div className="rounded-2xl overflow-hidden transition-all duration-300 border border-gray-200 bg-white shadow-sm hover:shadow-md hover:-translate-y-1 animate-slide-up" style={{animationDelay: "0.2s"}}>
               <div className="h-40 bg-gradient-to-r from-indigo-600 to-purple-600 flex items-center justify-center">
                 <PenTool className="h-16 w-16 text-white" />
               </div>
@@ -71,7 +85,7 @@ const Index = () => {
             </div>
 
             {/* Card 3 */}
-            <div className="glass-card rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 animate-slide-up" style={{animationDelay: "0.3s"}}>
+            <div className="rounded-2xl overflow-hidden transition-all duration-300 border border-gray-200 bg-white shadow-sm hover:shadow-md hover:-translate-y-1 animate-slide-up" style={{animationDelay: "0.3s"}}>
               <div className="h-40 bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
                 <CheckCircle className="h-16 w-16 text-white" />
               </div>
@@ -89,8 +103,37 @@ const Index = () => {
         </div>
       </section>
 
-  {/* Core Features (reduced) */}
-  <section className="py-12 bg-gray-50">
+      {/* How it works */}
+      <section className="py-12 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="rounded-2xl p-6 border bg-white">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 text-primary flex items-center justify-center mb-3">
+                <Search className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold mb-1">Search</h3>
+              <p className="text-muted-foreground">Filter by location, price, amenities, and more.</p>
+            </div>
+            <div className="rounded-2xl p-6 border bg-white">
+              <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
+                <PenTool className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold mb-1">Apply</h3>
+              <p className="text-muted-foreground">Complete your secure application in minutes.</p>
+            </div>
+            <div className="rounded-2xl p-6 border bg-white">
+              <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center mb-3">
+                <CheckCircle className="h-5 w-5" />
+              </div>
+              <h3 className="font-semibold mb-1">Get Approved</h3>
+              <p className="text-muted-foreground">Track status and move in faster.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Core Features */}
+      <section className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex flex-col items-center text-center mb-10">
             <span className="inline-block px-4 py-2 rounded-full bg-blue-50 text-primary text-sm font-medium mb-4">
@@ -130,8 +173,55 @@ const Index = () => {
         </div>
       </section>
 
-      {/* CTA Section (simplified, removed heavy background image) */}
-      <section className="py-12 bg-gradient-to-r from-blue-600 to-indigo-700">
+      {/* Testimonials */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex flex-col items-center text-center mb-10">
+            <span className="inline-block px-4 py-2 rounded-full bg-blue-50 text-primary text-sm font-medium mb-4">
+              What Renters Say
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+              Loved by thousands of renters
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl">
+              Real stories from people who found their dream home
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <TestimonialCard
+              name="Ayesha K."
+              role="Marketing Manager"
+              quote="I toured, applied, and got approved in two days. So smooth!"
+              rating={5}
+              image="/placeholder/avatar-1.jpg"
+              delay={0.1}
+            />
+            <TestimonialCard
+              name="Jorge M."
+              role="Engineer"
+              quote="Search filters actually work. Found the perfect place near work."
+              rating={5}
+              image="/placeholder/avatar-2.jpg"
+              delay={0.15}
+            />
+            <TestimonialCard
+              name="Priya S."
+              role="Designer"
+              quote="Clean UI and clear status tracking. Highly recommend."
+              rating={5}
+              image="/placeholder/avatar-3.jpg"
+              delay={0.2}
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="relative py-16">
+        <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-700" />
+        <div className="absolute inset-0 opacity-30" aria-hidden>
+          <div className="h-full w-full bg-[radial-gradient(60%_60%_at_50%_-10%,#fff,transparent_70%)]" />
+        </div>
         <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 text-center">
           <div className="animate-fade-in">
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Ready to Find Your Home?</h2>

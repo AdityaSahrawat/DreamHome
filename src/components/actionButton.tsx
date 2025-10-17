@@ -1,5 +1,6 @@
 import { Button } from "@/src/components/ui/button";
 import { cn } from "@/src/lib/utils";
+import Link from "next/link";
 import { ReactNode } from "react";
 
 type ActionButtonProps = {
@@ -38,7 +39,7 @@ const ActionButton = ({
 
   if (href) {
     return (
-      <a href={href} className="inline-block">
+      <Link href={href} className={cn(fullWidth ? "block w-full" : "inline-block")}> 
         <Button
           variant={variant === "primary" ? "default" : variant}
           size={size}
@@ -46,7 +47,7 @@ const ActionButton = ({
         >
           {content}
         </Button>
-      </a>
+      </Link>
     );
   }
 

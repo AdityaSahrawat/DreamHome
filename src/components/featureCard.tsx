@@ -24,7 +24,7 @@ const FeatureCard = ({
   return (
     <div 
       className={cn(
-  "glass-card p-8 rounded-2xl border border-gray-200 bg-white/70 backdrop-blur-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 animate-slide-up group",
+        "p-8 rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1 animate-slide-up group",
         className
       )}
       style={{ animationDelay: `${delay}s` }}
