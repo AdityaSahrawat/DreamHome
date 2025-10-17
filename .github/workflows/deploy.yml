@@ -1,0 +1,69 @@
+name: Deploy DreamHome to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io
+          username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+      
+      - name: Build and push docker image 
+        run: |
+          docker build -t ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest .
+          docker push ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
+
+      - name: Deploy to Azure VM via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USERNAME }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            # Login to Azure Container Registry
+            docker login ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io -u ${{ secrets.AZURE_REGISTRY_USERNAME }} -p ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+            
+            # Force pull latest image (with cache invalidation)
+            docker pull ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
+            
+            # Stop and remove existing container
+            docker stop dreamhome || true
+            docker rm dreamhome || true
+            
+            docker rmi ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest || true
+            
+            docker pull ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
+            
+            docker run -d -p 3000:3000 --name dreamhome --restart=always \
+              -e NODE_ENV=production \
+              -e NEXT_TELEMETRY_DISABLED=1 \
+              -e DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+              -e EMAIL_USER="${{ secrets.EMAIL_USER }}" \
+              -e EMAIL_PASS="${{ secrets.EMAIL_PASS }}" \
+              -e GOOGLE_CLIENT_ID="${{ secrets.GOOGLE_CLIENT_ID }}" \
+              -e GOOGLE_CLIENT_SECRET="${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              -e NEXTAUTH_SECRET="${{ secrets.NEXTAUTH_SECRET }}" \
+              -e NEXTAUTH_URL="https://dreamhome-app.duckdns.org" \
+              -e AUTH_TRUST_HOST="true" \
+              ${{ secrets.AZURE_REGISTRY_NAME }}.azurecr.io/dreamhome:latest
+            
+            # Wait and check status
+            echo "Container started. Checking status..."
+            sleep 10
+            docker ps | grep dreamhome
+            echo "Recent logs:"
+            docker logs dreamhome --tail 20
+
+
+                          

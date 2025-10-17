@@ -4,6 +4,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 // Define the Branch interface
 interface Branch {
@@ -32,6 +33,13 @@ export default function Register() {
   const [success, setSuccess] = useState('');
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Email verification states
+  const [step, setStep] = useState<'form' | 'verify' | 'complete'>('form');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  
   const router = useRouter();
 
   useEffect(() => {
@@ -60,20 +68,112 @@ export default function Register() {
     setError('');
     setSuccess('');
 
+    // Validate all required fields
+    if (!name.trim() || !email.trim() || !password || !confirmPassword || !branchId) {
+      setError('All fields are required');
+      return;
+    }
+
+    if (userType === 'staff' && !role) {
+      setError('Please select a staff role');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
 
+    // Step 1: Send verification code
+    await sendVerificationCode();
+  };
+
+  const sendVerificationCode = async () => {
+    setIsSendingCode(true);
+    setError('');
+
     try {
+      const response = await fetch('/api/auth/manual/send-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to send verification code');
+      }
+
+      setSuccess('Verification code sent to your email!');
+      setStep('verify');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Failed to send verification code. Please try again.');
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsVerifying(true);
+
+    try {
+      const verifyResponse = await fetch('/api/auth/manual/verify-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          code: verificationCode,
+          name : name,
+          password : password
+        }),
+      });
+
+      const verifyData = await verifyResponse.json();
+  // Removed debug log: verifyData
+
+      if (!verifyResponse.ok) {
+        throw new Error(verifyData.message || 'Invalid verification code'); 
+      }
+
+      // Step 2: Complete registration after email verification
+      await completeRegistration();
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Verification failed. Please try again.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const completeRegistration = async () => {
+    try {
+      // Validate all required fields before sending
+      if (!name || !email || !password || !branchId) {
+        setError('All fields are required. Please go back and fill in all information.');
+        setStep('form');
+        return;
+      }
+
+      if (userType === 'staff' && !role) {
+        setError('Staff role is required. Please go back and select a role.');
+        setStep('form');
+        return;
+      }
+
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name,
-          email,
+          name: name.trim(),
+          email: email.trim(),
           password,
           role: userType === 'client' ? 'client' : role,
           branch_id: branchId
@@ -87,17 +187,29 @@ export default function Register() {
       }
 
       setSuccess(data.message);
+      setStep('complete');
       
       if (userType === 'client') {
         setTimeout(() => {
           router.push('/login');
         }, 2000);
       }
-      // eslint-disable-next-line
-    } catch (err: any) {
-      setError(err.message || 'Registration failed. Please try again.');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Registration failed. Please try again.');
     }
   };
+
+  const googleReady = !!branchId && (userType === 'client' || (userType === 'staff' && !!role));
+
+  function handleGoogleRegister() {
+    if (!googleReady) return;
+    const params = new URLSearchParams();
+    params.set('from', 'google');
+    params.set('role', userType === 'client' ? 'client' : role);
+    if (userType !== 'client' && branchId) params.set('branch', branchId);
+    params.set('new', '1');
+    signIn('google', { callbackUrl: `/auth/complete?${params.toString()}` });
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -137,166 +249,327 @@ export default function Register() {
             </div>
           )}
 
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="user-type" className="block text-sm font-medium text-gray-700">
-                I want to register as a
-              </label>
-              <div className="mt-1">
-                <select
-                  id="user-type"
-                  value={userType}
-                  onChange={(e) => setUserType(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                  <option value="client">Client</option>
-                  <option value="staff">Staff Member</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name
-              </label>
-              <div className="mt-1">
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-            </div>
-
-            {userType === 'staff' && (
+          {/* Step 1: Registration Form */}
+          {step === 'form' && (
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Unified role / type selections */}
               <div>
-                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                  Staff Role
+                <label htmlFor="user-type" className="block text-sm font-medium text-gray-700">
+                  I want to register as a
                 </label>
                 <div className="mt-1">
                   <select
-                    id="role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
+                    id="user-type"
+                    value={userType}
+                    onChange={(e) => setUserType(e.target.value)}
                     className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   >
-                    {STAFF_ROLES.map((staffRole) => (
-                      <option key={staffRole.value} value={staffRole.value}>
-                        {staffRole.label}
-                      </option>
-                    ))}
+                    <option value="client">Client</option>
+                    <option value="staff">Staff Member</option>
                   </select>
                 </div>
               </div>
-            )}
 
-            <div>
-              <label htmlFor="branch" className="block text-sm font-medium text-gray-700">
-                {userType === 'client' ? 'Preferred Branch' : 'Assigned Branch'}
-              </label>
-              <div className="mt-1">
-                <select
-                  id="branch"
-                  value={branchId}
-                  onChange={(e) => setBranchId(e.target.value)}
-                  required
-                  disabled={loading}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              {userType === 'staff' && (
+                <div>
+                  <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                    Staff Role
+                  </label>
+                  <div className="mt-1">
+                    <select
+                      id="role"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    >
+                      {STAFF_ROLES.map((staffRole) => (
+                        <option key={staffRole.value} value={staffRole.value}>
+                          {staffRole.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="branch" className="block text-sm font-medium text-gray-700">
+                  {userType === 'client' ? 'Preferred Branch' : 'Assigned Branch'}
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="branch"
+                    value={branchId}
+                    onChange={(e) => setBranchId(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    <option value="">Select a branch</option>
+                    {branches.map((branch, index) => (
+                      <option key={branch.branch_id || `branch-${index}`} value={branch.branch_id}>
+                        {branch.branch_name} ({branch.location})
+                      </option>
+                    ))}
+                  </select>
+                  {loading && <p className="text-xs text-gray-500 mt-1">Loading branches...</p>}
+                </div>
+              </div>
+
+              {/* Google button integrated */}
+              <div>
+                <button
+                  type="button"
+                  onClick={handleGoogleRegister}
+                  disabled={!branchId || (userType === 'staff' && !role) || loading}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium bg-white hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Continue registration with Google"
                 >
-                  <option value="">Select a branch</option>
-                  {branches.map((branch) => (
-                    <option key={branch.branch_id} value={branch.branch_id}>
-                      {branch.branch_name} ({branch.location})
-                    </option>
-                  ))}
-                </select>
-                {loading && <p className="text-xs text-gray-500 mt-1">Loading branches...</p>}
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-5 w-5"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.954 4 4 12.954 4 24s8.954 20 20 20c11.046 0 20-8.954 20-20 0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571.001-.001.002-.001.003-.002l6.19 5.238C36.971 39.179 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+                  Continue with Google
+                </button>
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300" /></div>
+                <div className="relative flex justify-center text-xs"><span className="px-2 bg-white text-gray-500">Or continue manually</span></div>
+              </div>
+              <div>
+                <label htmlFor="user-type" className="block text-sm font-medium text-gray-700">
+                  I want to register as a
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="user-type"
+                    value={userType}
+                    onChange={(e) => setUserType(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    <option value="client">Client</option>
+                    <option value="staff">Staff Member</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  Full Name
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  Email address
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              {userType === 'staff' && (
+                <div>
+                  <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                    Staff Role
+                  </label>
+                  <div className="mt-1">
+                    <select
+                      id="role"
+                      value={role}
+                      onChange={(e) => setRole(e.target.value)}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    >
+                      {STAFF_ROLES.map((staffRole) => (
+                        <option key={staffRole.value} value={staffRole.value}>
+                          {staffRole.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="branch" className="block text-sm font-medium text-gray-700">
+                  {userType === 'client' ? 'Preferred Branch' : 'Assigned Branch'}
+                </label>
+                <div className="mt-1">
+                  <select
+                    id="branch"
+                    value={branchId}
+                    onChange={(e) => setBranchId(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  >
+                    <option value="">Select a branch</option>
+                    {branches.map((branch, index) => (
+                      <option key={branch.branch_id || `branch-${index}`} value={branch.branch_id}>
+                        {branch.branch_name} ({branch.location})
+                      </option>
+                    ))}
+                  </select>
+                  {loading && <p className="text-xs text-gray-500 mt-1">Loading branches...</p>}
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
+                  Confirm password
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="confirm-password"
+                    name="confirm-password"
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center">
                 <input
-                  id="password"
-                  name="password"
-                  type="password"
+                  id="terms"
+                  name="terms"
+                  type="checkbox"
                   required
-                  minLength={8}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
+                <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
+                  I agree to the{' '}
+                  <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+                    Terms and Conditions
+                  </a>
+                </label>
               </div>
-            </div>
 
-            <div>
-              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
-                Confirm password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="confirm-password"
-                  name="confirm-password"
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
+              <div>
+                <button
+                  type="submit"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={isSendingCode || loading}
+                >
+                  {isSendingCode ? 'Sending Code...' : 'Send Verification Code'}
+                </button>
               </div>
-            </div>
+            </form>
+          )}
 
-            <div className="flex items-center">
-              <input
-                id="terms"
-                name="terms"
-                type="checkbox"
-                required
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label htmlFor="terms" className="ml-2 block text-sm text-gray-900">
-                I agree to the{' '}
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                  Terms and Conditions
-                </a>
-              </label>
-            </div>
+          {/* Step 2: Email Verification */}
+          {step === 'verify' && (
+            <form className="space-y-6" onSubmit={handleVerifyCode}>
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900">Verify Your Email</h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  We&apos;ve sent a 6-digit code to <strong>{email}</strong>
+                </p>
+              </div>
 
-            <div>
-              <button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                disabled={loading}
-              >
-                {userType === 'client' ? 'Create Account' : 'Submit Application'}
-              </button>
+              <div>
+                <label htmlFor="verification-code" className="block text-sm font-medium text-gray-700">
+                  Enter verification code
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="verification-code"
+                    name="verification-code"
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-center text-lg tracking-widest"
+                    placeholder="000000"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <button
+                  type="submit"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={isVerifying}
+                >
+                  {isVerifying ? 'Verifying...' : 'Verify & Complete Registration'}
+                </button>
+              </div>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={sendVerificationCode}
+                  className="text-blue-600 hover:text-blue-500 text-sm mr-4"
+                  disabled={isSendingCode}
+                >
+                  {isSendingCode ? 'Sending...' : 'Resend code'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStep('form')}
+                  className="text-gray-600 hover:text-gray-500 text-sm"
+                >
+                  Back to form
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* Step 3: Registration Complete */}
+          {step === 'complete' && (
+            <div className="text-center space-y-4">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900">Registration Complete!</h3>
+              <p className="text-sm text-gray-600">
+                {userType === 'client' 
+                  ? 'Your account has been created successfully. You will be redirected to login shortly.'
+                  : 'Your staff application has been submitted successfully. You will be contacted once it is reviewed.'
+                }
+              </p>
             </div>
-          </form>
+          )}
 
           <div className="mt-6">
             <div className="relative">

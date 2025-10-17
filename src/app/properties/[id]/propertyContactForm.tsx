@@ -5,12 +5,11 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import axios from "axios";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
 import { Label } from "@/src/components/ui/label";
 import { Textarea } from "@/src/components/ui/textArea";
-import { CalendarIcon, Clock } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "@/src/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -31,7 +30,6 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export const PropertyContactForm: React.FC<PropertyContactFormProps> = ({ propertyId }) => {
-  const router = useRouter();
   
   const { 
     register, 
@@ -50,30 +48,17 @@ export const PropertyContactForm: React.FC<PropertyContactFormProps> = ({ proper
   const scheduled_time = watch("scheduled_time");
 
   const onSubmit = async (data: FormValues) => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push("/login");
-      return;
-    }
     const formattedData = {
       ...data,
       scheduled_time: data.scheduled_time.toISOString() // Convert Date to ISO string
     };
 
     try {
-      console.log(token , propertyId , formattedData.scheduled_time , formattedData.message)
-      const response = await axios.post("/api/leases/schedule",
-        {
-          property_id: propertyId,
-          scheduled_time: formattedData.scheduled_time ,
-          message: formattedData.message
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await axios.post("/api/leases/schedule", {
+        property_id: propertyId,
+        scheduled_time: formattedData.scheduled_time ,
+        message: formattedData.message
+      });
 
       reset();
       alert("Viewing request submitted successfully!");

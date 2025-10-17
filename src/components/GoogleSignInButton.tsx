@@ -8,6 +8,14 @@ interface GoogleSignInButtonProps {
 
 export function GoogleSignInButton({ className }: GoogleSignInButtonProps) {
   const handleGoogleSignIn = () => {
+    try {
+      if (typeof window !== 'undefined') {
+        // Remove legacy manual auth token so backend will fall back to NextAuth session
+        localStorage.removeItem('token');
+      }
+    } catch {
+      // ignore storage errors
+    }
     signIn('google', { callbackUrl: '/' })
   }
 

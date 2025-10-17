@@ -1,235 +1,118 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react";
-import { Menu, X } from "lucide-react";
-import ActionButton from "./actionButton";
-import axios from "axios";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { hybridLogout } from '@/src/lib/logout';
+import ActionButton from './actionButton';
+import { Menu, X } from 'lucide-react';
 
-const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+export default function Navbar() {
+  const { data: session, status } = useSession();
+  const [open, setOpen] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+    const onScroll = () => {
+      setScrolled(window.scrollY > 8); // small threshold for effect
     };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
+  const authed = status === 'authenticated';
+  const role = (session?.user as { role?: string | null } | undefined)?.role || '';
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        if (token) {
-          const res = await axios.get('/api/auth', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          console.log("response : ", res.data);
-          setUser(res.data.authResult);
-          setIsAuthenticated(true);
-          setUserRole(res.data.authResult.role);
-        }
-      } catch (err) {
-        setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkAuth();
-  }, [token]);
-
-  const handleLogout = () => {
-    setShowLogoutConfirm(true);
-  };
-
-  const confirmLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('token');
+  async function logout() {
+    try {
+      setLoggingOut(true);
+      await hybridLogout({ redirect: false });
+    } finally {
+      setLoggingOut(false);
     }
-    setUser(null);
-    setIsAuthenticated(false);
-    setShowLogoutConfirm(false);
-    // Optional: Redirect to home page after logout
-    window.location.href = '/';
-  };
-
-  const cancelLogout = () => {
-    setShowLogoutConfirm(false);
-  };
-
-  if (loading) {
-    return (
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md shadow-sm py-4">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <nav className="flex items-center justify-between">
-            <div className="text-2xl font-bold tracking-tight text-foreground">
-              <span className="text-primary">Dream</span>Home
-            </div>
-          </nav>
-        </div>
-      </header>
-    );
   }
 
+  const baseClasses = 'fixed top-0 left-0 right-0 z-40 transition-all duration-300 will-change-[background-color,backdrop-filter,box-shadow,transform]';
+  const styleClasses = scrolled
+    ? 'bg-white/70 backdrop-blur-md border-b border-gray-200 shadow-sm'
+    : 'bg-white border-b border-transparent backdrop-blur-0';
+
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? "bg-white/80 backdrop-blur-md shadow-sm py-4"
-          : "bg-transparent py-6"
-      }`}
-    >
-      {/* Logout Confirmation Modal */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
-            <h3 className="text-lg font-medium mb-4">Confirm Logout</h3>
-            <p className="mb-6">Are you sure you want to log out?</p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={cancelLogout}
-                className="px-4 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmLogout}
-                className="px-4 py-2 text-sm rounded-md bg-primary text-white hover:bg-primary/90"
-              >
-                Log Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+    <header className={`${baseClasses} ${styleClasses}`}>    
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+        <nav className="flex items-center justify-between w-full">
+          <Link href="/" className="text-lg font-semibold">
+            Dream<span className="text-primary">Home</span>
+          </Link>
 
-      <div className="max-w-7xl mx-auto px-6 lg:px-8">
-        <nav className="flex items-center justify-between">
-          {/* Logo */}
-          <a href="/" className="text-2xl font-bold tracking-tight text-foreground">
-            <span className="text-primary">Dream</span>Home
-          </a>
-
-          {/* Desktop Navigation Links */}
-          <div className="hidden md:flex items-center space-x-8">
-            <a href="/properties" className="nav-link">Properties</a>
-            <a href="/about" className="nav-link">About</a>
-            <a href="/contact" className="nav-link">Contact</a>
-            <a href="/how-it-works" className="nav-link">How It Works</a>
-            {userRole === "client" && (
-              <a href="/properties/list" className="nav-link font-medium text-primary">
-                List Your Property
-              </a>
-            )}
-            {userRole === "manager" && (
-              <a href="/manager/properties" className="nav-link font-medium text-primary">
-                Listed Properties
-              </a>
-            )}
+          <div className="hidden md:flex items-center gap-6 text-sm">
+            <Link href="/properties" className="hover:text-primary">Properties</Link>
+            <Link href="/about" className="hover:text-primary">About</Link>
+            <Link href="/contact" className="hover:text-primary">Contact</Link>
+            <Link href="/how-it-works" className="hover:text-primary">How It Works</Link>
+            {role === 'client' && <Link href="/properties/list" className="text-primary font-medium">List Your Property</Link>}
+            {role === 'manager' && <Link href="/manager/properties" className="text-primary font-medium">Manage Properties</Link>}
           </div>
 
-          {/* Authentication Buttons / Profile */}
-          <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated ? (
+          <div className="hidden md:flex items-center gap-3 text-sm">
+            {status === 'loading' ? (
+              <span className="text-xs text-gray-400">…</span>
+            ) : authed ? (
               <>
-                <ActionButton variant="outline" href="/profile" size="sm">
-                  Profile
-                </ActionButton>
+                <ActionButton variant="outline" href="/profile" size="sm">Profile</ActionButton>
                 <button
-                  onClick={handleLogout}
-                  className="px-4 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-50"
+                  onClick={logout}
+                  disabled={loggingOut}
+                  className="px-3 py-1 border rounded hover:bg-gray-50 disabled:opacity-50"
                 >
-                  Logout
+                  {loggingOut ? '…' : 'Logout'}
                 </button>
               </>
             ) : (
               <>
-                <ActionButton variant="outline" href="/login" size="sm">
-                  Sign In
-                </ActionButton>
-                <ActionButton href="/register" size="sm">
-                  Register
-                </ActionButton>
+                <ActionButton variant="outline" href="/login" size="sm">Login</ActionButton>
+                <ActionButton href="/register" size="sm">Register</ActionButton>
               </>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden focus:outline-none"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? (
-              <X className="h-6 w-6 text-foreground" />
-            ) : (
-              <Menu className="h-6 w-6 text-foreground" />
-            )}
+          <button className="md:hidden" aria-label="Toggle menu" onClick={() => setOpen(o => !o)}>
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </nav>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden mt-4 py-4 bg-white rounded-xl shadow-lg animate-slide-down">
-            <div className="flex flex-col space-y-4 px-6">
-              <a href="/properties" className="py-2 text-foreground hover:text-primary transition-colors">
-                Properties
-              </a>
-              <a href="/about" className="py-2 text-foreground hover:text-primary transition-colors">
-                About
-              </a>
-              <a href="/contact" className="py-2 text-foreground hover:text-primary transition-colors">
-                Contact
-              </a>
-              <a href="/how-it-works" className="py-2 text-foreground hover:text-primary transition-colors">
-                How It Works
-              </a>
-              {userRole === "client" && (
-                <a href="/properties/list" className="py-2 text-primary font-medium transition-colors">
-                  List Your Property
-                </a>
+        {open && (
+          <div className="md:hidden absolute top-14 left-0 right-0 bg-white border-b px-4 pb-4 flex flex-col gap-2 text-sm">
+            <Link href="/properties" onClick={() => setOpen(false)} className="py-1">Properties</Link>
+            <Link href="/about" onClick={() => setOpen(false)} className="py-1">About</Link>
+            <Link href="/contact" onClick={() => setOpen(false)} className="py-1">Contact</Link>
+            <Link href="/how-it-works" onClick={() => setOpen(false)} className="py-1">How It Works</Link>
+            {role === 'client' && <Link href="/properties/list" onClick={() => setOpen(false)} className="py-1">List Property</Link>}
+            {role === 'manager' && <Link href="/manager/properties" onClick={() => setOpen(false)} className="py-1">Manage</Link>}
+            <div className="pt-2 border-t flex flex-col gap-2">
+              {status === 'loading' ? (
+                <span className="text-xs text-gray-400">…</span>
+              ) : authed ? (
+                <>
+                  <ActionButton variant="outline" href="/profile" size="sm" onClick={() => setOpen(false)}>Profile</ActionButton>
+                  <button
+                    onClick={() => { setOpen(false); logout(); }}
+                    disabled={loggingOut}
+                    className="px-3 py-1 border rounded text-left disabled:opacity-50"
+                  >
+                    {loggingOut ? '…' : 'Logout'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <ActionButton variant="outline" href="/login" size="sm" onClick={() => setOpen(false)}>Login</ActionButton>
+                  <ActionButton href="/register" size="sm" onClick={() => setOpen(false)}>Register</ActionButton>
+                </>
               )}
-              {userRole === "manager" && (
-                <a href="/manager/properties" className="py-2 text-primary font-medium transition-colors">
-                  Listed Properties
-                </a>
-              )}
-              <div className="flex flex-col space-y-3 pt-3 border-t">
-                {isAuthenticated ? (
-                  <>
-                    <ActionButton variant="outline" href="/profile">
-                      Profile
-                    </ActionButton>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full py-2 px-4 text-left text-foreground hover:text-primary transition-colors"
-                    >
-                      Logout
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <ActionButton variant="outline" href="/login">
-                      Sign In
-                    </ActionButton>
-                    <ActionButton href="/register">
-                      Register
-                    </ActionButton>
-                  </>
-                )}
-              </div>
             </div>
           </div>
         )}
       </div>
     </header>
   );
-};
-
-export default Navbar;
+}

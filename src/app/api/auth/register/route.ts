@@ -6,8 +6,14 @@ import { NextResponse } from 'next/server';
 export async function POST(req: Request) {
     const { name, email, password, role, branch_id } = await req.json();
 
-    if (!name || !email || !password || !role || !branch_id) {
-        return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+    if (!name || !email || !password || !role || !branch_id || branch_id === "") {
+        return NextResponse.json({ message: "All fields are required" }, { status: 400 });
+    }
+
+    // Convert branch_id to integer
+    const branchIdInt = parseInt(branch_id);
+    if (isNaN(branchIdInt)) {
+        return NextResponse.json({ message: "Invalid branch ID" }, { status: 400 });
     }
 
     try {
@@ -28,7 +34,7 @@ export async function POST(req: Request) {
                     email,
                     password,
                     role,
-                    branchId: branch_id
+                    branchId: branchIdInt
                 }
             });
             return NextResponse.json({ message: "Client registered successfully" }, { status: 201 });
@@ -37,7 +43,7 @@ export async function POST(req: Request) {
                 data: {
                     email,
                     role,
-                    branchId: branch_id,
+                    branchId: branchIdInt,
                     tempPassword: password,
                     name
                 }

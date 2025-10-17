@@ -2,11 +2,10 @@
 "use client"
 
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
-import { Card, CardHeader, CardTitle } from "@/src/components/ui/card";
 import { Button } from "@/src/components/ui/button";
-import { UserCircle, PlusIcon } from "lucide-react";
+import { UserCircle } from "lucide-react";
 import Navbar from "@/src/components/navbar";
 import { useToast } from "@/src/components/hook/use-toast";
 import UserInfoCard from "./userInfo";
@@ -16,6 +15,7 @@ import ManagerTabs from "./managerTab";
 import BranchManagement from "./BranchManagement";
 import ConfirmationDialog from "./confirmationDialog";
 import { Loader2 } from "lucide-react";
+import { Lease, LeaseDraft as FullLeaseDraft } from "./interface";
 
 type User = {
   id: string;
@@ -26,40 +26,77 @@ type User = {
   contact?: string | null;
 };
 
-type ProfileData = {
-  user: User;
-  leases?: Lease[];
-  properties?: any[];
-  staffApplications?: any[];
-  pendingProperties?: any[];
-  assistants?: any[];
-  leaseRequests?: any[];
-  viewRequests?: any[];
-  leaseDrafts? : LeaseDraft[]
+// Narrowed interface shapes used only for rendering concerns on the dashboard.
+interface PropertySummary {
+  id: string;
+  title: string;
+  address: string;
+  city: string;
+  status: string;
+  type?: string;
+  bedrooms?: number;
+  price?: number;
+  created_at?: string;
+}
+
+interface StaffApplicationSummary {
+  application_id: string;
+  name: string;
+  email: string;
+  role: string; // requested role
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+}
+
+interface AssistantSummary { id: string; name: string; email?: string }
+
+interface ViewingRequestSummary {
+  request_id: string;
+  property_title: string;
+  client_name: string;
+  client_email: string;
+  scheduled_time: string; // ISO
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+// Backend returns a subset of FullLeaseDraft; define a relaxed shape we accept then normalize.
+type DashboardLeaseDraft = Partial<FullLeaseDraft> & Pick<FullLeaseDraft, 'id' | 'propertyId' | 'propertyTitle' | 'propertyAddress' | 'status' | 'version'> & {
+  clientName?: string; clientEmail?: string;
+  // legacy snake_case keys from older API responses
+  client_name?: string; client_email?: string;
+  property_id?: number; client_id?: number; current_terms?: FullLeaseDraft['current_terms'];
 };
 
-interface Lease {
-  id: number;
-  propertyId: number;
-  propertyTitle: string;
-  propertyAddress: string;
-  signedByClient: boolean;
-  signedByAgent: boolean;
-  activeFrom: Date;
-  clientName?: string;
-  clientEmail?: string;
+interface ProfileData {
+  user: User;
+  leases?: Lease[];
+  properties?: PropertySummary[];
+  staffApplications?: StaffApplicationSummary[];
+  pendingProperties?: PropertySummary[];
+  assistants?: AssistantSummary[];
+  leaseRequests?: ViewingRequestSummary[]; // legacy naming
+  viewRequests?: ViewingRequestSummary[];
+  leaseDrafts?: DashboardLeaseDraft[];
 }
 
-interface LeaseDraft {
-  id: number;
-  propertyId: number;
-  propertyTitle: string;
-  propertyAddress: string;
-  status: 'draft' | 'client_review' | 'manager_review' | 'approved' | 'signed';
-  version: number;
-  clientName?: string;
-  clientEmail?: string;
-}
+const normalizeLeaseDrafts = (drafts: DashboardLeaseDraft[]): FullLeaseDraft[] => {
+  return drafts.map(d => ({
+    // required core
+    id: d.id,
+    propertyId: d.propertyId ?? d.property_id ?? 0,
+    clientId: d.clientId ?? d.client_id ?? 0,
+    propertyTitle: d.propertyTitle || 'Unknown Property',
+    propertyAddress: d.propertyAddress || 'Unknown Address',
+    status: ((): FullLeaseDraft['status'] => {
+      const allowed: FullLeaseDraft['status'][] = ['draft','client_accepted','client_rejected','approved','canceled','signed'];
+      return allowed.includes(d.status as FullLeaseDraft['status']) ? d.status as FullLeaseDraft['status'] : 'draft';
+    })(),
+    version: d.version ?? 1,
+    current_terms: d.current_terms ?? null,
+    clientName: d.clientName ?? d.client_name,
+    clientEmail: d.clientEmail ?? d.client_email
+  }));
+};
 
 const DashboardPage = () => {
   const router = useRouter();
@@ -76,14 +113,10 @@ const DashboardPage = () => {
     title: "",
   });
   const [refreshKey, setRefreshKey] = useState(0);
+  const normalizedLeaseDrafts = useMemo(() => profileData?.leaseDrafts ? normalizeLeaseDrafts(profileData.leaseDrafts) : [], [profileData?.leaseDrafts]);
 
   const handlePropertyStatus = async (propertyId: string, status: 'approved'|'rejected', assistantId?: string) => {
-    console.log(propertyId , assistantId , status)
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
+  // Removed debug log: propertyId, assistantId, status
 
     if (status === 'approved' && !assistantId) {
       toast({
@@ -105,19 +138,14 @@ const DashboardPage = () => {
 
   const confirmAction = async () => {
     const { action, propertyId, assistantId } = confirmationDialog;
-    const token = localStorage.getItem('token');
     
     try {
       setConfirmationDialog(prev => ({ ...prev, open: false }));
       
-      console.log(assistantId)
+  // Removed debug log: assistantId
       await axios.post(`/api/properties/add/${propertyId}`, {
         status: action,
         assistantId
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
       });
       
       
@@ -138,50 +166,27 @@ const DashboardPage = () => {
     }
   };
 
-  const fetchProfileData = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-
+  const fetchProfileData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/profile', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type' : 'application/json'
-        }
-      });
-      console.log(response)
+      const response = await axios.get('/api/profile');
+  // Removed debug log: response
       setProfileData(response.data);
     } catch (err) {
       setError('Failed to fetch profile data');
       console.error(err);
-      if (axios.isAxiosError(err) && err.response?.status === 401) {
-        localStorage.removeItem('token');
-        router.push('/login');
-      }
+      if (axios.isAxiosError(err) && err.response?.status === 401) router.push('/login');
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   const handleScheduleStatusChange = async (requestId: string, status: 'approved'|'rejected') => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-    console.log(requestId)
+  // Removed debug log: requestId
     try {
       await axios.put('/api/leases/schedule', {
         requestId ,
         status
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
       });
   
       fetchProfileData();
@@ -202,19 +207,9 @@ const DashboardPage = () => {
   };
 
   const handleStaffApplicationStatusChange = async (applicationId: string, status: 'approved'|'rejected') => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/login');
-      return;
-    }
-  
     try {
       await axios.post(`/api/auth/register/staff/${applicationId}`, {
         status
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
       });
   
       fetchProfileData();
@@ -235,16 +230,14 @@ const DashboardPage = () => {
   };
   useEffect(() => {
     fetchProfileData();
-  }, [router, refreshKey]);
-  
-  // Add this function
+  }, [fetchProfileData, refreshKey]);
+
+  // Refresh helper
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
   };
 
-  useEffect(() => {
-    fetchProfileData();
-  }, [router]);
+  // Removed duplicate effect that caused double fetch
 
   if (loading) {
     return (
@@ -286,11 +279,13 @@ const DashboardPage = () => {
         <UserInfoCard user={profileData.user} />
 
         {/* Client-specific content */}
-        {profileData.user.role === 'client'  && (
-        <>
-          {profileData.leaseDrafts && <LeaseDraftsCard drafts={profileData.leaseDrafts} userRole={profileData.user.role as 'client'} onUpdate={fetchProfileData} />}
-        </>
-      )}
+        {profileData.user.role === 'client'  && normalizedLeaseDrafts.length > 0 && (
+          <LeaseDraftsCard 
+            drafts={normalizedLeaseDrafts} 
+            userRole="client" 
+            onUpdate={fetchProfileData} 
+          />
+        )}
 
         {/* Staff/Owner-specific content */}
         {['manager', 'supervisor', 'assistant', 'owner'].includes(profileData.user.role) && profileData.properties && (
@@ -318,34 +313,13 @@ const DashboardPage = () => {
           <BranchManagement />
         )}
 
-        {profileData.user.role === "assistant" && (
-          <>
-          
-            <Card className="mb-4">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold flex items-center justify-between">
-                  <span>Lease Management</span>
-                  <Button onClick={() => setCreateLeaseDialogOpen(true)}>
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Create New Lease
-                  </Button>
-                </CardTitle>
-              </CardHeader>
-            </Card>
-
-
-            <LeaseDraftsCard 
-            //@ts-ignore
-              drafts={profileData.leaseDrafts} 
-              isStaff={['assistant'].includes(profileData.user.role)}
-              onUpdate={handleRefresh}
-            />
-
-          </>
-
-          
-          
-          
+        {profileData.user.role === "assistant" && normalizedLeaseDrafts.length > 0 && (
+          <LeaseDraftsCard 
+            drafts={normalizedLeaseDrafts} 
+            isStaff
+            userRole="assistant"
+            onUpdate={handleRefresh}
+          />
         )}
 
         <ConfirmationDialog 

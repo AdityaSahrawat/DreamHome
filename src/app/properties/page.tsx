@@ -8,11 +8,11 @@ import { NoResults } from "./noResult";
 import { ResultsHeader } from "./resultHeader";
 import { CallToAction } from "./callToAction";
 import { Pagination } from "./pagination";
-import Navbar from "@/src/components/navbar";
 import Footer from "@/src/components/footer";
 import { AlertCircle } from "lucide-react";
 import axios from "axios";
 import { Button } from "@/src/components/ui/button";
+import Navbar from "@/src/components/navbar";
 
 const ITEMS_PER_PAGE = 4;
 const PROPERTY_TYPES = ["All Types", "House", "Apartment", "Villa", "Studio", "Condo", "Cabin"];
@@ -54,7 +54,7 @@ const Index = () => {
         //   'Content-Type': 'application/json',
         // },
       });
-      console.log(response.data)
+  // Removed debug log
 
       if (response.data && response.data.properties) {
         setAllProperties(response.data.properties);
