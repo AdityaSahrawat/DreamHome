@@ -36,13 +36,13 @@ export default function Navbar() {
   const baseClasses = 'fixed top-0 left-0 right-0 z-40 transition-all duration-300 will-change-[background-color,backdrop-filter,box-shadow,transform]';
   const styleClasses = scrolled
     ? 'bg-white/70 backdrop-blur-md border-b border-gray-200 shadow-sm'
-    : 'bg-white border-b border-transparent backdrop-blur-0';
+    : 'bg-white/80 backdrop-blur-sm border-b border-transparent';
 
   return (
     <header className={`${baseClasses} ${styleClasses}`}>    
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
         <nav className="flex items-center justify-between w-full">
-          <Link href="/" className="text-lg font-semibold">
+          <Link href="/" className="text-lg font-semibold tracking-tight"> 
             Dream<span className="text-primary">Home</span>
           </Link>
 
@@ -77,12 +77,12 @@ export default function Navbar() {
             )}
           </div>
 
-          <button className="md:hidden" aria-label="Toggle menu" onClick={() => setOpen(o => !o)}>
+          <button className="md:hidden p-2 rounded-md hover:bg-gray-100" aria-label="Toggle menu" onClick={() => setOpen(o => !o)}>
             {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </nav>
         {open && (
-          <div className="md:hidden absolute top-14 left-0 right-0 bg-white border-b px-4 pb-4 flex flex-col gap-2 text-sm">
+          <div className="md:hidden absolute top-14 left-0 right-0 bg-white/95 backdrop-blur-sm border-b px-4 pb-4 flex flex-col gap-2 text-sm shadow-sm">
             <Link href="/properties" onClick={() => setOpen(false)} className="py-1">Properties</Link>
             <Link href="/about" onClick={() => setOpen(false)} className="py-1">About</Link>
             <Link href="/contact" onClick={() => setOpen(false)} className="py-1">Contact</Link>

@@ -8,14 +8,14 @@ interface TestimonialCardProps {
   role: string;
   quote: string;
   rating: number;
-  image: string;
+  image?: string;
   delay?: number;
 }
 
 const TestimonialCard = ({ name, role, quote, rating, image, delay = 0 }: TestimonialCardProps) => {
   return (
     <div 
-      className="glass-card p-6 md:p-8 rounded-2xl transition-all duration-300 hover:shadow-md flex flex-col animate-slide-up"
+      className="p-6 md:p-8 rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:shadow-md flex flex-col animate-slide-up"
       style={{ animationDelay: `${delay}s` }}
     >
       <div className="flex items-center space-x-1 mb-6">
@@ -30,14 +30,20 @@ const TestimonialCard = ({ name, role, quote, rating, image, delay = 0 }: Testim
       <p className="text-foreground/90 text-lg italic mb-6">"{quote}"</p>
       
       <div className="mt-auto flex items-center">
-        <div className="relative w-12 h-12 rounded-full mr-4 overflow-hidden">
-          <Image 
-            src={image} 
-            alt={name} 
-            fill
-            className="object-cover"
-          />
-        </div>
+        {image ? (
+          <div className="relative w-12 h-12 rounded-full mr-4 overflow-hidden">
+            <Image 
+              src={image} 
+              alt={name} 
+              fill
+              className="object-cover"
+            />
+          </div>
+        ) : (
+          <div className="w-12 h-12 rounded-full mr-4 bg-gradient-to-br from-blue-200 to-indigo-300 flex items-center justify-center text-foreground/80 font-medium">
+            {name.split(" ").map(part => part[0]).slice(0,2).join("")}
+          </div>
+        )}
         <div>
           <p className="font-medium text-foreground">{name}</p>
           <p className="text-sm text-muted-foreground">{role}</p>
